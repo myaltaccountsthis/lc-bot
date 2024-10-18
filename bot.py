@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import utils
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
@@ -27,5 +28,11 @@ async def ping(interaction: discord.Interaction):
     # Edit the message with the latency of original response
     time = round((msg.created_at - interaction.created_at).total_seconds() * 1000)
     await msg.edit(content=text + f' {time} ms round-trip.')
+
+# Displays a random leetcode problem, can specifiy if you want premium problems
+@tree.command(name="random", description="Get a random question from LeetCode")
+async def randomQuestion(interaction: discord.Interaction, allow_premium: bool = False):
+    utils.load_question_data()
+    await interaction.response.send_message(utils.random_question(allow_premium))
 
 bot.run(token=os.getenv('BOT_TOKEN'))
