@@ -1,12 +1,16 @@
 import os
+from datetime import datetime
+
 import discord
 from discord.ext import commands
+from discord import app_commands
 from dotenv import load_dotenv
 import utils
+import asyncio
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
-tree = discord.app_commands.CommandTree(bot)
+tree = app_commands.CommandTree(bot)
 
 @bot.event
 async def on_ready():
@@ -17,6 +21,8 @@ async def on_ready():
         print(f"Synced {len(synced)} commands")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
+
+    
 
 @tree.command(name="ping", description="Display latency information")
 async def ping(interaction: discord.Interaction):
@@ -32,7 +38,39 @@ async def ping(interaction: discord.Interaction):
 # Displays a random leetcode problem, can specifiy if you want premium problems
 @tree.command(name="random", description="Get a random question from LeetCode")
 async def randomQuestion(interaction: discord.Interaction, allow_premium: bool = False):
-    utils.load_question_data()
-    await interaction.response.send_message(utils.random_question(allow_premium))
+    await interaction.response.send_message(await utils.random_question(allow_premium))
+
+# Group for all contest related commands
+contest = app_commands.Group(name="contest", description="Commands related to contests")
+
+
+# Command to get problems from a specific contest
+@contest.command(name="info", description="Get information about a specific contest")
+@app_commands.choices(contest_type=[
+    app_commands.Choice(name="Weekly", value="weekly"),
+    app_commands.Choice(name="Biweekly", value="biweekly")
+])
+async def info(interaction: discord.Interaction, contest_type: app_commands.Choice[str] = None, contest_number: int = None):
+    contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    if contest_info is None:
+        await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+    else:
+        embed = discord.Embed(title=contest_info["title"], url=contest_info["url"])
+        # add each hyperlink to the embed as a line in description
+        embed.color = discord.Color.orange()
+        embed.description = "\n".join([f"**{i + 1}.** [{question['title']}]({question['url']}) *({question['difficulty']})*"
+                                       for i, question in enumerate(contest_info["questions"])])
+
+        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info["startTime"]).strftime('%b %d, %Y')}")
+        await interaction.response.send_message(embed=embed)
+tree.add_command(contest)
+
+@tree.command(name="daily_time", description="sus", nsfw=True)
+async def gif(interaction: discord.Interaction):
+    await interaction.response.send_message("https://cdn.discordapp.com/attachments/1124365604523081748/1296155709393735853/leetcodedaily.gif?ex=6713e592&is=67129412&hm=fec412a88da2b6ff773ae3a8419c06efb9218119d9f63b8129797fae31087bba&")
+
+# Force fetch question data
+asyncio.run(utils.load_question_data())
+asyncio.run(utils.load_contest_info_data())
 
 bot.run(token=os.getenv('BOT_TOKEN'))

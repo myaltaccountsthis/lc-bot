@@ -1,1 +1,0 @@
-~/pyenv/bin/python3.12 $1
