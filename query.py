@@ -1,3 +1,4 @@
+import asyncio
 import os
 from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
@@ -19,12 +20,12 @@ os.makedirs(OUT_PATH, exist_ok=True)
 for file in os.listdir(QUERIES_PATH):
     queries[file[:file.find(".gql")]] = gql(read_file(QUERIES_PATH + file))
 
-# Runs a query with given name and parameters
-def do_query(query_name, values = {}):
-    return client.execute_async(queries[query_name], variable_values=values)
+# Runs a query with given name and parameters (ASYNC)
+async def do_query(query_name, values = {}):
+    return await client.execute_async(queries[query_name], variable_values=values)
 
-# TESTING, doesn't run when bot is made
-limit = -1 # -1 if no limit
-result = do_query("problemsetQuestionList", values={"categorySlug": "", "skip": 0, "limit": limit, "filters": {}})
-with open(OUT_PATH + "questionList.txt", "w") as file:
-    file.write(str(result).replace("'", "\""))
+# TESTING, doesn't run when bot is made 🤥
+# limit = -1 # -1 if no limit
+# result = asyncio.run(do_query("problemsetQuestionList", values={"categorySlug": "", "skip": 0, "limit": limit, "filters": {}}))
+# with open(OUT_PATH + "questionList.txt", "w") as file:
+#     file.write(str(result).replace("'", "\""))
