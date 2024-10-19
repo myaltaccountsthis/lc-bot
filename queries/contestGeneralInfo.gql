@@ -1,0 +1,14 @@
+query mostRecentPastContest {
+  pastContests(pageNo: 1, numPerPage: -1) {
+    data {
+      title
+      titleSlug
+      questions {
+        titleSlug
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}

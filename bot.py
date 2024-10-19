@@ -32,7 +32,15 @@ async def ping(interaction: discord.Interaction):
 # Displays a random leetcode problem, can specifiy if you want premium problems
 @tree.command(name="random", description="Get a random question from LeetCode")
 async def randomQuestion(interaction: discord.Interaction, allow_premium: bool = False):
-    utils.load_question_data()
     await interaction.response.send_message(utils.random_question(allow_premium))
 
+# Group for all contest related commands
+contest = discord.app_commands.Group(name="contest", description="Commands related to contests")
+
+# Command to get problems from a specific contest
+@contest.command(name="info", description="Get information about a specific contest", )
+async def info(interaction: discord.Interaction, contest_slug: str = ""):
+    await interaction.response.send_message(utils.get_contest_info(contest_slug))
+
+tree.add_command(contest)
 bot.run(token=os.getenv('BOT_TOKEN'))
