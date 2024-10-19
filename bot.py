@@ -57,9 +57,10 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
     else:
         embed = discord.Embed(title=contest_info["title"], url=contest_info["url"])
         # add each hyperlink to the embed as a line in description
-        embed.description = "\n".join([f"{i + 1}. [{question['title']}]({question['url']}) ({question['difficulty']})"
+        embed.color = discord.Color.orange()
+        embed.description = "\n".join([f"**{i + 1}.** [{question['title']}]({question['url']}) *({question['difficulty']})*"
                                        for i, question in enumerate(contest_info["questions"])])
-        # use cst
+
         embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info["startTime"]).strftime('%b %d, %Y')}")
         await interaction.response.send_message(embed=embed)
 tree.add_command(contest)
