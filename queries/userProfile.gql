@@ -1,0 +1,55 @@
+query userPublicProfile($username: String!) {
+    matchedUser(username: $username) {
+        contestBadge {
+            name
+            expired
+            hoverText
+            icon
+        }
+        username
+        githubUrl
+        twitterUrl
+        linkedinUrl
+        problemsSolvedBeatsStats {
+            difficulty
+                percentage
+            }
+            submitStatsGlobal {
+                acSubmissionNum {
+                difficulty
+                count
+            }
+        }
+        profile {
+            ranking
+            userAvatar
+            realName
+            aboutMe
+            school
+            websites
+            countryName
+            company
+            jobTitle
+            skillTags
+            postViewCount
+            postViewCountDiff
+            reputation
+            reputationDiff
+            solutionCount
+            solutionCountDiff
+            categoryDiscussCount
+            categoryDiscussCountDiff
+        }
+    }
+    userContestRanking(username: $username) {
+        attendedContestsCount
+        rating
+        globalRanking
+        totalParticipants
+        topPercentage
+        badge {
+            name
+            hoverText
+        }
+    }
+}

@@ -104,3 +104,27 @@ async def get_contest_info(contest_type, contest_number):
         return None
 
     return contest_info_from_slug[title_slug]
+
+# Returns general user info, including contest rating, problems solved, etc.
+async def get_user_info(user_slug):
+    user_info = await query.do_query("userProfile", values={"username": user_slug})
+    if user_info["matchedUser"] is None:
+        return f"User {user_slug} does not exist"
+    
+    return {
+        "username": user_info["matchedUser"]["username"], # Username of user
+        "rating": user_info["userContestRanking"]["rating"], # Contest rating of user
+        "badge": user_info["userContestRanking"]["badge"]["name"], # Badge of user
+        # Ranking of user based on contests
+        "contest_rank": user_info["userContestRanking"]["globalRanking"],
+        # Number of contests taken
+        "contests_attended": user_info["userContestRanking"]["attendedContestsCount"],
+        # Top percent of user based on contests
+        "top_percentage": user_info["userContestRanking"]["topPercentage"],
+        # Ranking of user based on problems solved
+        "solved_rank": user_info["matchedUser"]["profile"]["ranking"],
+        # Array of difficulty and percentage, ac rate based on submissions vs solved
+        "ac_rate": user_info["matchedUser"]["problemsSolvedBeatsStats"],
+        # Array of difficulty and count, number of problems solved, includes difficulty "All"
+        "problems_solved": user_info["matchedUser"]["submitStatsGlobal"],
+    }
