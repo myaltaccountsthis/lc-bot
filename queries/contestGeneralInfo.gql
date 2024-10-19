@@ -3,7 +3,9 @@ query mostRecentPastContest {
     data {
       title
       titleSlug
+      startTime
       questions {
+        title
         titleSlug
         __typename
       }

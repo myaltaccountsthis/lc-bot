@@ -1,4 +1,6 @@
 import os
+from datetime import datetime
+
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -49,8 +51,17 @@ contest = app_commands.Group(name="contest", description="Commands related to co
     app_commands.Choice(name="Biweekly", value="biweekly")
 ])
 async def info(interaction: discord.Interaction, contest_type: app_commands.Choice[str] = None, contest_number: int = None):
-    await interaction.response.send_message(await utils.get_contest_info(f"{contest_type.value}-contest-{contest_number}" if contest_type    else None))
-
+    contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    if contest_info is None:
+        await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+    else:
+        embed = discord.Embed(title=contest_info["title"], url=contest_info["url"])
+        # add each hyperlink to the embed as a line in description
+        embed.description = "\n".join([f"{i + 1}. [{question['title']}]({question['url']}) ({question['difficulty']})"
+                                       for i, question in enumerate(contest_info["questions"])])
+        # use cst
+        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info["startTime"]).strftime('%b %d, %Y')}")
+        await interaction.response.send_message(embed=embed)
 tree.add_command(contest)
 
 @tree.command(name="daily_time", description="sus", nsfw=True)
@@ -58,7 +69,7 @@ async def gif(interaction: discord.Interaction):
     await interaction.response.send_message("https://cdn.discordapp.com/attachments/1124365604523081748/1296155709393735853/leetcodedaily.gif?ex=6713e592&is=67129412&hm=fec412a88da2b6ff773ae3a8419c06efb9218119d9f63b8129797fae31087bba&")
 
 # Force fetch question data
-# asyncio.run(utils.load_question_data(True))
-# asyncio.run(utils.load_contest_info_data(True))
+asyncio.run(utils.load_question_data())
+asyncio.run(utils.load_contest_info_data())
 
 bot.run(token=os.getenv('BOT_TOKEN'))

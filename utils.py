@@ -10,6 +10,7 @@ CONTEST_LINK = "https://leetcode.com/contest/"
 
 question_data = []
 contest_info_data = []
+question_info_from_slug = {}
 contest_info_from_slug = {}
 
 # Loads the question data by calling the query, stores into array by id, TIME_EXPENSIVE
@@ -24,15 +25,22 @@ async def load_question_data(forceFetch=False):
             with open(PROBLEM_PATH, "r") as file:
                 result = eval(file.read())
         question_data = result["problemsetQuestionList"]["questions"]
+
+        # Store the question info into a dict for easy access
+        for question in question_data:
+            question["url"] = PROBLEM_LINK + question["titleSlug"]
+            question_info_from_slug[question["titleSlug"]] = question
         print("Loaded question data!")
 
 # Loads the contest info data by calling the query, stores into array and dict, TIME_EXPENSIVE
 async def load_contest_info_data(forceFetch=False):
     global contest_info_data, contest_info_from_slug
+    await load_question_data()
     if len(contest_info_data) == 0:
         if forceFetch or not os.path.exists(CONTEST_PATH):
             result = await query.do_query("contestGeneralInfo", values={"titleSlug": ""})
             result = result["pastContests"]["data"]
+
             with open(CONTEST_PATH, "w") as file:
                 file.write(str(result))
         else:
@@ -40,8 +48,15 @@ async def load_contest_info_data(forceFetch=False):
                 result = eval(file.read())
 
         contest_info_data = result
-        contest_info_data.reverse()
+        # contest_info_data.reverse()
+
+        # Store the contest info into a dict for easy access
         for contest in result:
+            contest["url"] = CONTEST_LINK + contest["titleSlug"]
+            for question in contest["questions"]:
+                question_from_slug = question_info_from_slug[question["titleSlug"]]
+                question["url"] = question_from_slug["url"]
+                question["difficulty"] = question_from_slug["difficulty"]
             contest_info_from_slug[contest["titleSlug"]] = contest
         print("Loaded contest data!")
 
@@ -55,16 +70,37 @@ async def random_question(allow_premium):
         question = question_data[random.randrange(0, len(question_data))]
         if allow_premium or not question["paidOnly"]:
             break
-    return PROBLEM_LINK + question["titleSlug"]
+    return question["url"]
 
 # Get generic info (questions and links) of a specific contest
-async def get_contest_info(titleSlug=None):
-    await load_contest_info_data()
-    if titleSlug is None:
-        titleSlug = contest_info_data[0]["titleSlug"]
-    elif titleSlug not in contest_info_from_slug:
-        return f"Could not find contest {titleSlug}"
+# Returns None if the contest does not exist
+async def get_contest_info(contest_type, contest_number):
+    if contest_type is None and contest_number:
+        return "You cannot specify a contest number without a contest type"
 
-    contest_info = contest_info_from_slug[titleSlug]
-    return ''.join([contest_info["title"], ": ", CONTEST_LINK, titleSlug, "\n",
-        "\n".join(PROBLEM_LINK + question["titleSlug"] for question in contest_info["questions"])])
+    await load_contest_info_data()
+
+    # Creating a valid title slug
+    if contest_number is None:
+        if contest_type is None:
+            # Get the latest contest
+            title_slug = contest_info_data[0]["titleSlug"]
+        else:
+            # Get the latest contest of the specified type
+            type_bool = contest_type == "biweekly"
+            curr = 0
+            # Max of 3 iterations
+            while ("biweekly" in contest_info_data[curr]["titleSlug"]) != type_bool:
+                curr += 1
+            title_slug = contest_info_data[curr]["titleSlug"]
+    else:
+        # Get the specified contest
+        title_slug = f"{contest_type}-contest-{contest_number}"
+        if contest_type == "weekly" and contest_number < 58:
+            title_slug = "leetcode-" + title_slug
+
+    # Check if the contest exists
+    if title_slug not in contest_info_from_slug:
+        return None
+
+    return contest_info_from_slug[title_slug]
