@@ -2,6 +2,7 @@ import re
 import os
 import random
 import query
+import psycopg2
 
 PROBLEM_PATH = "out/questionList.txt"
 CONTEST_PATH = "out/contestList.txt"
@@ -14,10 +15,10 @@ question_info_from_slug = {}
 contest_info_from_slug = {}
 
 # Loads the question data by calling the query, stores into array by id, TIME_EXPENSIVE
-async def load_question_data(forceFetch=False):
+async def load_question_data(force_fetch=False):
     global question_data
     if len(question_data) == 0:
-        if forceFetch or not os.path.exists(PROBLEM_PATH):
+        if force_fetch or not os.path.exists(PROBLEM_PATH):
             result = await query.do_query("problemsetQuestionList", values={"categorySlug": "", "skip": 0, "limit": -1, "filters": {}})
             with open(PROBLEM_PATH, "w") as file:
                 file.write(str(result))
@@ -33,11 +34,11 @@ async def load_question_data(forceFetch=False):
         print("Loaded question data!")
 
 # Loads the contest info data by calling the query, stores into array and dict, TIME_EXPENSIVE
-async def load_contest_info_data(forceFetch=False):
+async def load_contest_info_data(force_fetch=False):
     global contest_info_data, contest_info_from_slug
     await load_question_data()
     if len(contest_info_data) == 0:
-        if forceFetch or not os.path.exists(CONTEST_PATH):
+        if force_fetch or not os.path.exists(CONTEST_PATH):
             result = await query.do_query("contestGeneralInfo", values={"titleSlug": ""})
             result = result["pastContests"]["data"]
 
@@ -61,14 +62,14 @@ async def load_contest_info_data(forceFetch=False):
         print("Loaded contest data!")
 
 # Returns the link of a random question
-async def random_question(allow_premium):
+async def random_question(difficulty, allow_premium):
     await load_question_data()
     # The data of a random question, keep looping if
     # it is a premium question and we don't want premium questions
     question = None
     while True:
         question = question_data[random.randrange(0, len(question_data))]
-        if allow_premium or not question["paidOnly"]:
+        if (allow_premium or not question["paidOnly"]) and (difficulty == "Random" or question["difficulty"] == difficulty.value):
             break
     return question["url"]
 
@@ -104,3 +105,41 @@ async def get_contest_info(contest_type, contest_number):
         return None
 
     return contest_info_from_slug[title_slug]
+
+# Returns general user info, including contest rating, problems solved, etc.
+async def get_user_info(user_slug):
+    user_info = await query.do_query("userProfile", values={"username": user_slug})
+    if user_info["matchedUser"] is None:
+        return { "message": f"User {user_slug} does not exist", "error": True }
+    if user_info["userContestRanking"] is None:
+        user_info["userContestRanking"] = {
+            "rating": 0,
+            "badge": { "name": "None" },
+            "globalRanking": 0,
+            "attendedContestsCount": 0,
+            "topPercentage": 100,
+        }
+    
+    return {
+        "username": user_info["matchedUser"]["username"], # Username of user
+        "user_avatar": user_info["matchedUser"]["profile"]["userAvatar"], # Avatar of user
+        "rating": user_info["userContestRanking"]["rating"], # Contest rating of user
+        "badge": user_info["userContestRanking"]["badge"]["name"], # Badge of user
+        # Ranking of user based on contests
+        "contest_rank": user_info["userContestRanking"]["globalRanking"],
+        # Number of contests taken
+        "contests_attended": user_info["userContestRanking"]["attendedContestsCount"],
+        # Top percent of user based on contests
+        "top_percentage": user_info["userContestRanking"]["topPercentage"],
+        # Ranking of user based on problems solved
+        "solved_rank": user_info["matchedUser"]["profile"]["ranking"],
+        # Array of difficulty and percentage, ac rate based on submissions vs solved
+        "ac_rate": user_info["matchedUser"]["problemsSolvedBeatsStats"],
+        # Array of difficulty and count, number of problems solved, includes difficulty "All"
+        "problems_solved": user_info["matchedUser"]["submitStatsGlobal"],
+    }
+
+async def get_user_recent_solves(user_slug, limit = 10):
+    recent_solves = await query.do_query("userRecentAcSubmissions", values={"username": user_slug, "limit": limit})
+    # TODO error handling
+    return recent_solves["recentAcSubmissionList"]

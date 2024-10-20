@@ -4,6 +4,7 @@ from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
 
 # SETUP GraphQL queries
+# TODO fix TransportAlreadyConnected error (probably when running multiple queries at once)
 transport = AIOHTTPTransport(url="https://leetcode.com/graphql")
 client = Client(transport=transport, execute_timeout=60)
 
