@@ -71,6 +71,19 @@ async def random_question(allow_premium):
         if allow_premium or not question["paidOnly"]:
             break
     return question["url"]
+    
+# Returns the link of a random question with the given difficulty
+async def random_question(allow_premium, difficulty):
+    await load_question_data()
+    # The data of a random question, keep looping if
+    # it is a premium question and we don't want premium questions
+    # it is a question of the wrong difficulty
+    question = None
+    while True:
+        question = question_data[random.randrange(0, len(question_data))]
+        if (allow_premium or not question["paidOnly"]) && lower(question["difficulty"]) == lower(difficulty):
+            break
+    return question["url"]
 
 # Get generic info (questions and links) of a specific contest
 # Returns None if the contest does not exist
