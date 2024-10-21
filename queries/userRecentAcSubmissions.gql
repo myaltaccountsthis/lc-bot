@@ -3,6 +3,7 @@ query recentAcSubmissions($username: String!, $limit: Int!) {
     id
     title
     titleSlug
+    notes
     timestamp
   }
 }
