@@ -1,13 +1,17 @@
+import asyncio
 import os
 from datetime import datetime
+from fileinput import filename
+from importlib.metadata import files
+from itertools import compress
 
 import discord
-from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
-import utils
-import asyncio
+
 import emojis
+import utils
+
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
@@ -82,21 +86,120 @@ tree.add_command(contest)
 
 # USER COMMANDS
 
+active_identification = {}
+verified_users = {}
+
 @tree.command(name="identify", description="Link your LeetCode account to your Discord account")
-async def identify(interaction: discord.Interaction, user_slug: str):
-    user_info = await utils.get_user_info(user_slug)
-    # gonna need to turn this error check to a function
+async def identify(interaction: discord.Interaction, username: str):
+    user_id = interaction.user.id
+
+    # allow users to reverify only if the new username is different
+    if user_id in verified_users and verified_users[user_id].lower() == username.lower():
+        await interaction.response.send_message(f"You have already verified that you are `{username}` on LeetCode.")
+        return
+
+    user_info = await utils.get_user_info(username)
+
+    # TODO: turn this error check to a function
     if "error" in user_info:
         embed = discord.Embed(title="Error", description=user_info["message"])
         await interaction.response.send_message(embed=embed)
         return
-    # TODO give random easy problem, check user solves, link with database
-    # user should already have solved the problem
-    await interaction.response.send_message(await utils.get_user_recent_solves(user_slug))
+
+    # get the official username from the user info
+    username = user_info["username"]
+
+    recent_ac_list = await utils.get_user_recent_solves(username)
+    embed = discord.Embed(title="Verification Instructions", color=discord.Color.orange())
+
+    unique_code = utils.generate_unique_code()
+
+    if len(recent_ac_list) == 0:
+        # use add-two-integers
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on your most recent **accepted** submission. If you don't have one, you can use [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
+    else:
+        last_ac = recent_ac_list[0]
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on either your most recent **accepted** submission **[({last_ac['title']})]({utils.PROBLEM_LINK + last_ac['titleSlug']}/submissions/{last_ac['id']})** or on a new one."
+
+    embed.set_footer(text="Click the button below when you're finished verifying")
+
+    # Upload the image to discord
+    # TODO: store image as an external url instead
+    image = utils.IDENTIFY_IMAGE()
+    embed.set_image(url=f"attachment://{image.filename}")
+
+    if user_id in active_identification:
+        active = active_identification[user_id]
+        button = active[2]
+        message = active[3]
+        # disable the previous button
+        button.button_callback.disabled = True
+        await message.edit(view=button)
+
+    button = FinishIdentification(user_id)
+    await interaction.response.send_message(embed=embed, file=image, view=button)
+
+    # store the active identification session
+    active_identification[user_id] = [username, unique_code, button, await interaction.original_response()]
+
+class FinishIdentification(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=None)
+        self.user_id = user_id
+
+    @discord.ui.button(label="I'm finished", style=discord.ButtonStyle.primary)
+    async def button_callback(self, interaction: discord.Interaction, button: discord.Button):
+        user_id = interaction.user.id
+
+        # check if the button is clicked by the same user
+        if user_id != self.user_id:
+            await interaction.response.send_message("This button is not for you.", ephemeral=True)
+            return
+        if user_id not in active_identification:
+            await interaction.response.send_message("You haven't started the verification process yet.", ephemeral=True)
+            return
+
+        # error handling
+        username, unique_code, target_button, message = active_identification[user_id]
+        if self != target_button:
+            return
+        user_info = await utils.get_user_info(username)
+        if "error" in user_info:
+            embed = discord.Embed(title="Error", description=user_info["message"])
+            await interaction.response.send_message(embed=embed)
+            return
+
+        # check if the user has added the note
+        recent_ac_list = await utils.get_user_recent_solves(username)
+        found = False
+        valid_note = f"Verifying with Leetcode Bot - {unique_code}"
+        for submission in recent_ac_list:
+            if len(submission["notes"]) <= len(valid_note) + 4 and valid_note == str(submission["notes"]).strip():
+                found = True
+                break
+
+        # if the note is found, add the user to the verified list
+        if found:
+            verified_users[user_id] = username
+            button.disabled = True
+            await message.edit(view=self)
+            del active_identification[user_id]
+            await interaction.response.send_message(f"Successfully verified that you are {username} on LeetCode.")
+        else:
+            await interaction.response.send_message("Could not find the verification note on your **recent accepted submissions**. Please try again.", ephemeral=True)
+
 
 @tree.command(name="profile", description="Get information about a specific user")
-async def profile(interaction: discord.Interaction, user_slug: str):
-    user_info = await utils.get_user_info(user_slug)
+async def profile(interaction: discord.Interaction, username: str = None):
+    # if no username is specified, use the discord user's leetcode username
+    if username is None:
+        if interaction.user.id in verified_users:
+            username = verified_users[interaction.user.id]
+        else:
+            await interaction.response.send_message("Please specify a user to get information about.")
+            return
+
+    user_info = await utils.get_user_info(username)
     if "error" in user_info:
         embed = discord.Embed(title="Error", description=user_info["message"])
         await interaction.response.send_message(embed=embed)
