@@ -129,10 +129,10 @@ async def identify(interaction: discord.Interaction, username: str):
 
     if len(recent_sub_list) == 0:
         # use add-two-integers
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on your most recent problem submission. If you don't have one, you can submit anything to [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with LeetCode Bot - {unique_code}```\nas a note on your most recent problem submission. If you don't have one, you can submit anything to [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
     else:
         last_sub = recent_sub_list[0]
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on either your most recent submission **[({last_sub['title']})]({utils.PROBLEM_LINK + last_sub['titleSlug']}/submissions/{last_sub['id']})** or on a new one."
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with LeetCode Bot - {unique_code}```\nas a note on either your most recent submission **[({last_sub['title']})]({utils.PROBLEM_LINK + last_sub['titleSlug']}/submissions/{last_sub['id']})** or on a new one."
 
     embed.set_footer(text="Click the button below when you're finished verifying")
 
@@ -184,7 +184,7 @@ class FinishIdentification(discord.ui.View):
         # check if the user has added the note
         recent_sub_list = await utils.get_user_recent_submissions(username)
         found = False
-        valid_note = f"Verifying with Leetcode Bot - {unique_code}"
+        valid_note = f"Verifying with LeetCode Bot - {unique_code}"
         for submission in recent_sub_list:
             if len(submission["notes"]) <= len(valid_note) + 4 and valid_note == str(submission["notes"]).strip():
                 found = True
@@ -293,7 +293,7 @@ async def plot(interaction: discord.Interaction, username: str = None):
         # Send the image in the Discord channel
         await interaction.response.send_message("Here is the rating over time chart:", file=file)
     else:
-        await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single Leetcode contest.")
+        await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
 # USELESS COMMANDS
 
 @tree.command(name="daily_time", description="sus", nsfw=True)
