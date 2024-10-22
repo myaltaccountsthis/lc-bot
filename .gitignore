@@ -1,4 +1,7 @@
-.env
+*.env
 .idea/
 out/
 __pycache__/
+
+Dockerfile
+deploy.sh
