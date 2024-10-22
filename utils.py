@@ -5,7 +5,6 @@ import discord
 import gql.transport.exceptions
 
 import query
-import psycopg2
 
 PROBLEM_PATH = "out/questionList.txt"
 CONTEST_PATH = "out/contestList.txt"
@@ -187,11 +186,10 @@ async def get_contest_info(contest_type, contest_number):
 
 # Returns general user info, including contest rating, problems solved, etc.
 async def get_user_info(user_slug):
+    user_info = None
     try:
         user_info = await query.do_query("userProfile", values={"username": user_slug})
     except gql.transport.exceptions.TransportQueryError:
-        return {"message": f"User {user_slug} does not exist", "error": True}
-    if user_info["matchedUser"] is None:
         return { "message": f"User {user_slug} does not exist", "error": True }
 
     if user_info["userContestRanking"] is None:
@@ -202,6 +200,8 @@ async def get_user_info(user_slug):
             "attendedContestsCount": 0,
             "topPercentage": 100,
         }
+    if user_info["userContestRanking"]["badge"] is None:
+        user_info["userContestRanking"]["badge"] = { "name": "None" }
     
     return {
         "username": user_info["matchedUser"]["username"], # Username of user

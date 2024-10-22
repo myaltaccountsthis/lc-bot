@@ -11,11 +11,16 @@ from dotenv import load_dotenv
 
 import emojis
 import utils
+import database
 
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
 tree = app_commands.CommandTree(bot)
+
+USERNAME_MAX_LENGTH = 30
+
+db = database.Database()
 
 # BOT EVENTS
 
@@ -92,9 +97,15 @@ tree.add_command(contest)
 
 active_identification = {}
 verified_users = {}
+for user in db.get_all_users():
+    verified_users[user[0]] = user[1]
 
 @tree.command(name="identify", description="Link your LeetCode account to your Discord account")
 async def identify(interaction: discord.Interaction, username: str):
+    if (len(username) > USERNAME_MAX_LENGTH):
+        await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+        return
+    
     user_id = interaction.user.id
 
     # allow users to reverify only if the new username is different
@@ -185,6 +196,7 @@ class FinishIdentification(discord.ui.View):
         # if the note is found, add the user to the verified list
         if found:
             verified_users[user_id] = username
+            db.add_user(user_id, username)
             button.disabled = True
             await message.edit(view=self)
             del active_identification[user_id]
@@ -202,7 +214,11 @@ async def profile(interaction: discord.Interaction, username: str = None):
         else:
             await interaction.response.send_message("Please specify a user to get information about.")
             return
-
+    
+    if (len(username) > USERNAME_MAX_LENGTH):
+        await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+        return
+    
     user_info = await utils.get_user_info(username)
     if "error" in user_info:
         embed = discord.Embed(title="Error", description=user_info["message"])
