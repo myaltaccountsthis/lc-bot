@@ -1,6 +1,9 @@
 import os
 import random
-
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
+import io
 import discord
 import gql.transport.exceptions
 
@@ -75,6 +78,69 @@ async def load_question_data(check_server=False, force_fetch=False):
             print("No new question data found on server")
 
 
+#import discord
+
+def create_line_chart(dates, points, username, knightCutoff=1850, guardianCutoff=2150):
+    # Convert string dates to datetime objects if necessary
+    dates = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in dates]
+    print(len(dates))
+    print(len(points))
+    # Determine the min and max points to set y-axis limits
+    min_points = min(points) - 100  # Adding a bit of padding
+    max_points = max(points) + 100
+
+    # Create the plot
+    fig, ax = plt.subplots()
+
+    # Define the Codeforces divisions and their exact colors
+    divisions = [
+        (0, 1199, '#CCCCCC'),     # Newbie: gray
+        (1200, 1399, '#77FF77'),  # Pupil: light green
+        (1400, 1599, '#77DDBB'),  # Specialist: cyan/teal
+        (1600, 1899, '#AAAAFF'),  # Expert: light blue
+        (1900, 2099, '#FF88FF'),  # Candidate Master: pink
+        (2100, 2299, '#FFCC88'),  # Master: light orange/yellow
+        (2300, 2399, '#FFBB55'),  # International Master: orange
+        (2400, 2999, '#FF7777'),  # Grandmaster: red
+        (3000, 4000, '#FF3333')   # International Grandmaster: darker red
+    ]
+
+    # Add colored backgrounds only for the divisions that fall within the relevant range
+    for lower_bound, upper_bound, color in divisions:
+        if lower_bound <= max_points and upper_bound >= min_points:
+            ax.axhspan(max(lower_bound, min_points), min(upper_bound, max_points), facecolor=color, alpha=0.8, zorder=-2)
+
+    # Plot the data
+    ax.plot(dates, points, marker='o', linestyle='-', color='black', markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2)
+
+    # Add horizontal lines for knight and guardian cutoffs
+    ax.axhline(y=knightCutoff, color='blue', linestyle='--', label=f'Knight Cutoff: {knightCutoff}', zorder=1)
+    ax.axhline(y=guardianCutoff, color='red', linestyle='--', label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
+    # Add labels for the cutoffs
+    ax.text(dates[-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
+    ax.text(dates[-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
+    # Format the date on the x-axis
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+    #ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Adjust the interval as necessary
+    ax.xaxis.set_major_locator(plt.MaxNLocator(10))
+    # Set the y-axis limits dynamically based on the data
+    ax.set_ylim(min_points, max_points)
+    # Rotate and align the x labels
+    plt.gcf().autofmt_xdate()
+
+    # Add labels and title
+    plt.xlabel('Date')
+    plt.ylabel('Rating')
+    plt.title('Username: ' + str(username))
+    
+    # Add the legend for the cutoffs
+    plt.legend()
+    # Save the figure to a buffer in PNG format
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    buf.seek(0)
+
+    return buf  # Return buffer with image content
 
 # Loads the contest info data by calling the query, stores into array and dict, TIME_EXPENSIVE
 async def load_contest_info_data(check_server=False, force_fetch=False):
@@ -232,6 +298,12 @@ async def get_user_recent_submissions(user_slug, limit = 10):
     # TODO error handling
     return recent_submissions["recentSubmissionList"]
 
+async def get_user_contest_history(user_slug):
+    recent_contests= await query.do_query("userContestHistory", values={"username": user_slug})
+    # TODO error handling
+    return recent_contests
+
+
 char_pop = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&"
 # generate verification code
 def generate_unique_code():
@@ -239,3 +311,10 @@ def generate_unique_code():
 
 def IDENTIFY_IMAGE():
     return discord.File("resources/identify_instructions.png", filename="identify_instructions.png")
+
+def convert_timestamp_to_date(timestamp):
+    # Convert the timestamp to a datetime object
+    date_time = datetime.utcfromtimestamp(timestamp)
+    # Format the date to a string in 'YYYY-MM-DD' format
+    date_string = date_time.strftime('%Y-%m-%d')
+    return date_string

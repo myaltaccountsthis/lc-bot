@@ -253,6 +253,47 @@ async def profile(interaction: discord.Interaction, username: str = None):
     embed.description = "\n".join(lines)
     await interaction.response.send_message(embed=embed)
 
+@tree.command(name="plot", description="Plots your Rating over Time")
+async def plot(interaction: discord.Interaction, username: str = None):
+    if username is None:
+        if interaction.user.id in verified_users:
+            username = verified_users[interaction.user.id]
+        else:
+            await interaction.response.send_message("Please specify a user to get information about.")
+            return
+    
+    if (len(username) > USERNAME_MAX_LENGTH):
+        await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+        return
+    
+    user_info = await utils.get_user_info(username)
+    if "error" in user_info:
+        embed = discord.Embed(title="Error", description=user_info["message"])
+        await interaction.response.send_message(embed=embed)
+        return
+        
+    date2 = await utils.get_user_contest_history(username)
+    contestList = date2["userContestRankingHistory"]
+    dates = []
+    points = []
+    for contest in contestList:
+        if (not contest["attended"]):
+            continue
+        
+        dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
+        points.append(int(contest["rating"]))
+
+    if (len(dates) > 0):
+        #Generate the chart as a buffer
+        chart_image = utils.create_line_chart(dates, points, username)
+
+        # Create a Discord file object from the buffer
+        file = discord.File(fp=chart_image, filename='chart.png')
+
+        # Send the image in the Discord channel
+        await interaction.response.send_message("Here is the rating over time chart:", file=file)
+    else:
+        await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single Leetcode contest.")
 # USELESS COMMANDS
 
 @tree.command(name="daily_time", description="sus", nsfw=True)
@@ -275,5 +316,5 @@ async def check_server():
         await utils.load_contest_info_data(check_server=True)
 
 
-test_bot = False
+test_bot = True
 bot.run(token=(os.getenv('BOT_TOKEN') if not test_bot else os.getenv('TEST_BOT_TOKEN')))
