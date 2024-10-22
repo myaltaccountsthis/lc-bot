@@ -182,7 +182,6 @@ async def get_contest_info(contest_type, contest_number):
 
     # Check if the contest exists
     if title_slug not in contest_info_from_slug:
-        print("not in")
         return None
     return contest_info_from_slug[title_slug]
 

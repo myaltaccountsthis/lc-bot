@@ -25,6 +25,7 @@ async def on_ready():
     try:
         # Sync slash command tree
         synced = await tree.sync()
+        # Check server every 5 minutes
         asyncio.create_task(check_server())
         print(f"Synced {len(synced)} commands")
     except Exception as e:
@@ -238,7 +239,7 @@ async def gif(interaction: discord.Interaction):
 async def gif(interaction: discord.Interaction):
     await interaction.response.send_message("https://cdn.discordapp.com/attachments/1190447467720868024/1287496458878062716/leetcodegf.gif?ex=6716ac04&is=67155a84&hm=b45d538b2c2e0d9ef44018772ad23ea35284d1fd1825d90a143b1b924fe0fe82&")
 
-# Force fetch question data
+# load data from server
 asyncio.run(utils.load_question_data(check_server=True))
 asyncio.run(utils.load_contest_info_data(check_server=True))
 
