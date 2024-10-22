@@ -1,4 +1,3 @@
-import re
 import os
 import random
 
@@ -19,41 +18,85 @@ question_info_from_slug = {}
 contest_info_from_slug = {}
 
 # Loads the question data by calling the query, stores into array by id, TIME_EXPENSIVE
-async def load_question_data(force_fetch=False):
+async def load_question_data(check_server=False, force_fetch=False):
     global question_data
-    if len(question_data) == 0:
+    if force_fetch or len(question_data) == 0:
+        # load all questions into question_data
         if force_fetch or not os.path.exists(PROBLEM_PATH):
             result = await query.do_query("problemsetQuestionList", values={"categorySlug": "", "skip": 0, "limit": -1, "filters": {}})
+            question_data = result["problemsetQuestionList"]["questions"]
             with open(PROBLEM_PATH, "w") as file:
-                file.write(str(result))
+                file.write(str(question_data))
+            print("Loaded all question data from server!")
         else:
             with open(PROBLEM_PATH, "r") as file:
-                result = eval(file.read())
-        question_data = result["problemsetQuestionList"]["questions"]
+                question_data = eval(file.read())
+            print("Loaded all question data from file!")
 
         # Store the question info into a dict for easy access
         for question in question_data:
             question["url"] = PROBLEM_LINK + question["titleSlug"]
             question_info_from_slug[question["titleSlug"]] = question
-        print("Loaded question data!")
+
+
+    if check_server:
+        # check for unloaded problems
+        # skip current problem count
+        old_len = len(question_data)
+        if old_len == 0:
+            print("Question data file was empty, doing a full reload")
+            await load_question_data(force_fetch=True, check_server=True)
+            return
+
+        result = await query.do_query("problemsetQuestionList", values={"categorySlug": "", "skip": old_len, "limit": old_len, "filters": {}})
+        # print(result)
+        new_len = result["problemsetQuestionList"]["total"]
+
+        # the query won't have all the new problems so do a full reload
+        if old_len <= new_len / 2:
+            question_data = []
+            print("More than half of the question data likely missing, doing a full reload")
+            await load_question_data(force_fetch=True, check_server=True)
+            return
+
+        result = result["problemsetQuestionList"]["questions"]
+
+        # add all the new questions into question_data
+        for question in result:
+            question["url"] = PROBLEM_LINK + question["titleSlug"]
+            question_info_from_slug[question["titleSlug"]] = question
+            question_data.append(question)
+
+        # write to file if updated
+        if len(result) > 0:
+            print(f"Found {len(result)} question data on server!")
+            with open(PROBLEM_PATH, "w") as file:
+                file.write(str(question_data))
+        else:
+            print("No new question data found on server")
+
+
 
 # Loads the contest info data by calling the query, stores into array and dict, TIME_EXPENSIVE
-async def load_contest_info_data(force_fetch=False):
+async def load_contest_info_data(check_server=False, force_fetch=False):
     global contest_info_data, contest_info_from_slug
     await load_question_data()
-    if len(contest_info_data) == 0:
-        if force_fetch or not os.path.exists(CONTEST_PATH):
-            result = await query.do_query("contestGeneralInfo", values={"titleSlug": ""})
-            result = result["pastContests"]["data"]
 
+    fetched = False
+    if force_fetch or len(contest_info_data) == 0:
+        if force_fetch or not os.path.exists(CONTEST_PATH):
+            result = await query.do_query("contestGeneralInfo", values={"pageNo": 1, "numPerPage": -1})
+            result = result["pastContests"]["data"]
+            fetched = True
             with open(CONTEST_PATH, "w") as file:
                 file.write(str(result))
+            print("Loaded all contest data from server!")
         else:
             with open(CONTEST_PATH, "r") as file:
                 result = eval(file.read())
+            print("Loaded all contest data from file!")
 
         contest_info_data = result
-        # contest_info_data.reverse()
 
         # Store the contest info into a dict for easy access
         for contest in result:
@@ -63,7 +106,40 @@ async def load_contest_info_data(force_fetch=False):
                 question["url"] = question_from_slug["url"]
                 question["difficulty"] = question_from_slug["difficulty"]
             contest_info_from_slug[contest["titleSlug"]] = contest
-        print("Loaded contest data!")
+
+    if check_server and not fetched:
+        # load 15 entries
+        load_count = 10
+        result = await query.do_query("contestGeneralInfo", values={"pageNo": 1, "numPerPage": load_count})
+        result = result["pastContests"]["data"]
+        loaded = 0
+
+        # prepend ones that are missing into contest_info_data,
+        result = result[::-1]
+        for contest in result:
+            if contest["titleSlug"] not in contest_info_from_slug:
+                contest["url"] = CONTEST_LINK + contest["titleSlug"]
+                for question in contest["questions"]:
+                    question_from_slug = question_info_from_slug[question["titleSlug"]]
+                    question["url"] = question_from_slug["url"]
+                    question["difficulty"] = question_from_slug["difficulty"]
+                contest_info_from_slug[contest["titleSlug"]] = contest
+                contest_info_data.insert(0, contest)
+                loaded += 1
+
+        if loaded > 0:
+            print(f"Found {loaded} updated contest data on server")
+            with open(CONTEST_PATH, "w") as file:
+                file.write(str(contest_info_data))
+        else:
+            print("No new contest data found on server")
+
+        # if all are missing, call the function again to do a full reload
+        if loaded == load_count:
+            contest_info_data = []
+            print("More than 10 contest data likely missing, doing a full reload")
+            await load_contest_info_data(force_fetch=True)
+
 
 # Returns the link of a random question
 async def random_question(difficulty, allow_premium):
@@ -107,7 +183,6 @@ async def get_contest_info(contest_type, contest_number):
     # Check if the contest exists
     if title_slug not in contest_info_from_slug:
         return None
-
     return contest_info_from_slug[title_slug]
 
 # Returns general user info, including contest rating, problems solved, etc.
