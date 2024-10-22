@@ -190,7 +190,7 @@ async def get_user_info(user_slug):
     try:
         user_info = await query.do_query("userProfile", values={"username": user_slug})
     except gql.transport.exceptions.TransportQueryError:
-        return { "message": f"User {user_slug} does not exist", "error": True }
+        return { "message": f"User `{user_slug}` does not exist", "error": True }
 
     if user_info["userContestRanking"] is None:
         user_info["userContestRanking"] = {
@@ -226,6 +226,11 @@ async def get_user_recent_solves(user_slug, limit = 10):
     recent_solves = await query.do_query("userRecentAcSubmissions", values={"username": user_slug, "limit": limit})
     # TODO error handling
     return recent_solves["recentAcSubmissionList"]
+
+async def get_user_recent_submissions(user_slug, limit = 10):
+    recent_submissions = await query.do_query("userRecentSubmissions", values={"username": user_slug, "limit": limit})
+    # TODO error handling
+    return recent_submissions["recentSubmissionList"]
 
 char_pop = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&"
 # generate verification code
