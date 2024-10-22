@@ -17,6 +17,7 @@ class Database:
 
         # Initialize table if it doesn't exist
         self.cursor.execute("CREATE TABLE IF NOT EXISTS users (discord_id bigint, lc_username varchar(30))")
+        self.connection.commit()
     
     def __del__(self):
         self.cursor.close()

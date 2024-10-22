@@ -102,7 +102,7 @@ for user in db.get_all_users():
 
 @tree.command(name="identify", description="Link your LeetCode account to your Discord account")
 async def identify(interaction: discord.Interaction, username: str):
-    if (len(username) > USERNAME_MAX_LENGTH):
+    if len(username) > USERNAME_MAX_LENGTH:
         await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
         return
     
@@ -117,24 +117,22 @@ async def identify(interaction: discord.Interaction, username: str):
 
     # TODO: turn this error check to a function
     if "error" in user_info:
-        embed = discord.Embed(title="Error", description=user_info["message"])
+        embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
         await interaction.response.send_message(embed=embed)
         return
 
     # get the official username from the user info
     username = user_info["username"]
-
-    recent_ac_list = await utils.get_user_recent_solves(username)
+    recent_sub_list = await utils.get_user_recent_submissions(username)
     embed = discord.Embed(title="Verification Instructions", color=discord.Color.orange())
-
     unique_code = utils.generate_unique_code()
 
-    if len(recent_ac_list) == 0:
+    if len(recent_sub_list) == 0:
         # use add-two-integers
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on your most recent **accepted** submission. If you don't have one, you can use [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on your most recent problem submission. If you don't have one, you can submit anything to [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
     else:
-        last_ac = recent_ac_list[0]
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on either your most recent **accepted** submission **[({last_ac['title']})]({utils.PROBLEM_LINK + last_ac['titleSlug']}/submissions/{last_ac['id']})** or on a new one."
+        last_sub = recent_sub_list[0]
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on either your most recent submission **[({last_sub['title']})]({utils.PROBLEM_LINK + last_sub['titleSlug']}/submissions/{last_sub['id']})** or on a new one."
 
     embed.set_footer(text="Click the button below when you're finished verifying")
 
@@ -153,13 +151,12 @@ async def identify(interaction: discord.Interaction, username: str):
 
     button = FinishIdentification(user_id)
     await interaction.response.send_message(embed=embed, file=image, view=button)
-
     # store the active identification session
     active_identification[user_id] = [username, unique_code, button, await interaction.original_response()]
 
 class FinishIdentification(discord.ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)
+        super().__init__(timeout=180)
         self.user_id = user_id
 
     @discord.ui.button(label="I'm finished", style=discord.ButtonStyle.primary)
@@ -185,10 +182,10 @@ class FinishIdentification(discord.ui.View):
             return
 
         # check if the user has added the note
-        recent_ac_list = await utils.get_user_recent_solves(username)
+        recent_sub_list = await utils.get_user_recent_submissions(username)
         found = False
         valid_note = f"Verifying with Leetcode Bot - {unique_code}"
-        for submission in recent_ac_list:
+        for submission in recent_sub_list:
             if len(submission["notes"]) <= len(valid_note) + 4 and valid_note == str(submission["notes"]).strip():
                 found = True
                 break
@@ -200,10 +197,21 @@ class FinishIdentification(discord.ui.View):
             button.disabled = True
             await message.edit(view=self)
             del active_identification[user_id]
-            await interaction.response.send_message(f"Successfully verified that you are {username} on LeetCode.")
+            await interaction.response.send_message(f"Successfully verified that you are `{username}` on LeetCode.")
+            del self
         else:
-            await interaction.response.send_message("Could not find the verification note on your **recent accepted submissions**. Please try again.", ephemeral=True)
+            await interaction.response.send_message("Could not find the verification note on your **recent submissions**. Please try again.", ephemeral=True)
 
+    async def on_timeout(self):
+        if self != active_identification[self.user_id][2]:
+            return
+
+        self.button_callback.disabled = True
+        message = active_identification[self.user_id][3]
+        embed = discord.Embed(title="Verification Timed Out", description="Please try again.", color=discord.Color.red())
+        await message.edit(embed=embed, view=self, attachments=[])
+        del active_identification[self.user_id]
+        del self
 
 @tree.command(name="profile", description="Get information about a specific user")
 async def profile(interaction: discord.Interaction, username: str = None):
@@ -266,4 +274,6 @@ async def check_server():
         await utils.load_question_data(check_server=True)
         await utils.load_contest_info_data(check_server=True)
 
-bot.run(token=os.getenv('BOT_TOKEN'))
+
+test_bot = False
+bot.run(token=(os.getenv('BOT_TOKEN') if not test_bot else os.getenv('TEST_BOT_TOKEN')))
