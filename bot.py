@@ -316,5 +316,5 @@ async def check_server():
         await utils.load_contest_info_data(check_server=True)
 
 
-test_bot = True
+test_bot = False
 bot.run(token=(os.getenv('BOT_TOKEN') if not test_bot else os.getenv('TEST_BOT_TOKEN')))
