@@ -1,5 +1,5 @@
-query mostRecentPastContest {
-  pastContests(pageNo: 1, numPerPage: -1) {
+query mostRecentPastContest($pageNo: Int, $numPerPage: Int) {
+  pastContests(pageNo: $pageNo, numPerPage: $numPerPage) {
     data {
       title
       titleSlug

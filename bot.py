@@ -25,6 +25,7 @@ async def on_ready():
     try:
         # Sync slash command tree
         synced = await tree.sync()
+        asyncio.create_task(check_server())
         print(f"Synced {len(synced)} commands")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
@@ -72,6 +73,8 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
     contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
     if contest_info is None:
         await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+    elif type(contest_info) == str:
+        await interaction.response.send_message(contest_info)
     else:
         embed = discord.Embed(title=contest_info["title"], url=contest_info["url"])
         # add each hyperlink to the embed as a line in description
@@ -236,8 +239,14 @@ async def gif(interaction: discord.Interaction):
     await interaction.response.send_message("https://cdn.discordapp.com/attachments/1190447467720868024/1287496458878062716/leetcodegf.gif?ex=6716ac04&is=67155a84&hm=b45d538b2c2e0d9ef44018772ad23ea35284d1fd1825d90a143b1b924fe0fe82&")
 
 # Force fetch question data
-force_fetch = False
-asyncio.run(utils.load_question_data(force_fetch=force_fetch))
-asyncio.run(utils.load_contest_info_data(force_fetch=force_fetch))
+asyncio.run(utils.load_question_data(check_server=True))
+asyncio.run(utils.load_contest_info_data(check_server=True))
+
+# Check server every 5 minutes
+async def check_server():
+    while True:
+        await asyncio.sleep(300)
+        await utils.load_question_data(check_server=True)
+        await utils.load_contest_info_data(check_server=True)
 
 bot.run(token=os.getenv('BOT_TOKEN'))
