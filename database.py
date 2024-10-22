@@ -14,6 +14,9 @@ class Database:
             print("Missing environment variables for database connection. Please include PG_USER, PG_PASSWORD, PG_DATABASE, PG_HOST, and PG_PORT.")
         self.connection = psycopg2.connect(**info)
         self.cursor = self.connection.cursor()
+
+        # Initialize table if it doesn't exist
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS users (discord_id BIGINT PRIMARY KEY, lc_username TEXT, lc_password TEXT)")
     
     def __del__(self):
         self.cursor.close()
