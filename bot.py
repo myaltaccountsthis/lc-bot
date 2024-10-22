@@ -110,7 +110,7 @@ async def identify(interaction: discord.Interaction, username: str):
 
     # allow users to reverify only if the new username is different
     if user_id in verified_users and verified_users[user_id].lower() == username.lower():
-        await interaction.response.send_message(f"You have already verified that you are `{username}` on LeetCode.")
+        await interaction.response.send_message(f"You have already verified that you are `{verified_users[user_id]}` on LeetCode.")
         return
 
     user_info = await utils.get_user_info(username)
