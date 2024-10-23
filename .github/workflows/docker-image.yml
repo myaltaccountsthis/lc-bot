@@ -16,5 +16,6 @@ jobs:
       run: |
         echo "${{ secrets.DEPLOY_PASS }}" | sudo -S docker ps
         echo "${{ secrets.DEPLOY_PASS }}" | sudo -S docker build -t lc-bot .
-        echo "${{ secrets.DEPLOY_PASS }}" | sudo -S docker stop lc-bot-app || true
+        # echo "${{ secrets.DEPLOY_PASS }}" | sudo -S docker stop lc-bot-app || true
         echo "${{ secrets.DEPLOY_PASS }}" | sudo -S docker run -d -it --rm --env-file ~/lc-bot/prod.env --network database_default --name lc-bot-app lc-bot
+        echo "Success"
