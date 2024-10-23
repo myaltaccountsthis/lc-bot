@@ -3,5 +3,4 @@
 out/
 __pycache__/
 
-Dockerfile
 deploy.sh
