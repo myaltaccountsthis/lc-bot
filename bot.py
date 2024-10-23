@@ -22,6 +22,13 @@ USERNAME_MAX_LENGTH = 30
 
 db = database.Database()
 
+async def check_user_not_found(interaction: discord.Interaction, user_info):
+    if "error" in user_info:
+        embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
+        await interaction.response.send_message(embed=embed)
+        return True
+    return False
+
 # BOT EVENTS
 
 @bot.event
@@ -115,10 +122,7 @@ async def identify(interaction: discord.Interaction, username: str):
 
     user_info = await utils.get_user_info(username)
 
-    # TODO: turn this error check to a function
-    if "error" in user_info:
-        embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
-        await interaction.response.send_message(embed=embed)
+    if (await check_user_not_found(interaction, user_info)):
         return
 
     # get the official username from the user info
@@ -176,9 +180,7 @@ class FinishIdentification(discord.ui.View):
         if self != target_button:
             return
         user_info = await utils.get_user_info(username)
-        if "error" in user_info:
-            embed = discord.Embed(title="Error", description=user_info["message"])
-            await interaction.response.send_message(embed=embed)
+        if (await check_user_not_found(interaction, user_info)):
             return
 
         # check if the user has added the note
@@ -228,9 +230,7 @@ async def profile(interaction: discord.Interaction, username: str = None):
         return
     
     user_info = await utils.get_user_info(username)
-    if "error" in user_info:
-        embed = discord.Embed(title="Error", description=user_info["message"])
-        await interaction.response.send_message(embed=embed)
+    if (await check_user_not_found(interaction, user_info)):
         return
         
     num_solved = {}
@@ -267,9 +267,7 @@ async def plot(interaction: discord.Interaction, username: str = None):
         return
     
     user_info = await utils.get_user_info(username)
-    if "error" in user_info:
-        embed = discord.Embed(title="Error", description=user_info["message"])
-        await interaction.response.send_message(embed=embed)
+    if (await check_user_not_found(interaction, user_info)):
         return
         
     date2 = await utils.get_user_contest_history(username)

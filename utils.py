@@ -83,8 +83,8 @@ async def load_question_data(check_server=False, force_fetch=False):
 def create_line_chart(dates, points, username, knightCutoff=1850, guardianCutoff=2150):
     # Convert string dates to datetime objects if necessary
     dates = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in dates]
-    print(len(dates))
-    print(len(points))
+    # print(len(dates))
+    # print(len(points))
     # Determine the min and max points to set y-axis limits
     min_points = min(points) - 100  # Adding a bit of padding
     max_points = max(points) + 100
