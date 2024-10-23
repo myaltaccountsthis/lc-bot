@@ -294,19 +294,7 @@ async def plot(interaction: discord.Interaction, username: str = None):
         await interaction.response.send_message("Here is the rating over time chart:", file=file)
     else:
         await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
-# USELESS COMMANDS
 
-@tree.command(name="daily_time", description="sus", nsfw=True)
-async def gif(interaction: discord.Interaction):
-    await interaction.response.send_message("https://cdn.discordapp.com/attachments/1124365604523081748/1296155709393735853/leetcodedaily.gif?ex=6713e592&is=67129412&hm=fec412a88da2b6ff773ae3a8419c06efb9218119d9f63b8129797fae31087bba&")
-
-@tree.command(name="gf", description="am 1500 rated", nsfw=True)
-async def gif(interaction: discord.Interaction):
-    await interaction.response.send_message("https://cdn.discordapp.com/attachments/1190447467720868024/1287496458878062716/leetcodegf.gif?ex=6716ac04&is=67155a84&hm=b45d538b2c2e0d9ef44018772ad23ea35284d1fd1825d90a143b1b924fe0fe82&")
-
-@tree.command(name="kiss", description="wowz", nsfw=True)
-async def gif(interaction: discord.Interaction):
-    await interaction.response.send_message("https://tenor.com/view/leetcode-kiss-black-girl-emo-gif-3418018854521131648")
 
 # load data from server
 asyncio.run(utils.load_question_data(check_server=True))
