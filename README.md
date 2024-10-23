@@ -1,4 +1,4 @@
-# Leetcode Bot
+# LeetCode Bot
 
 ## Setup
 
@@ -11,6 +11,8 @@ Run this command
 `pip3 install -r requirements.txt`
 
 Install [PostgreSQL 17](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)
+
+Make sure C:\Program Files\PostgreSQL\17\bin is in Path
 
 In an elevated terminal, run `createdb lc-bot-data -U postgres`
 

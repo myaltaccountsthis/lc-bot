@@ -86,9 +86,9 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
         # add each hyperlink to the embed as a line in description
         embed.color = discord.Color.orange()
         embed.description = "\n".join([f"**{i + 1}.** [{question['title']}]({question['url']}) *({question['difficulty']})*"
-                                       for i, question in enumerate(contest_info["questions"])])
+                                       for i, question in enumerate(contest_info['questions'])])
 
-        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info["startTime"]).strftime('%b %d, %Y')}")
+        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info['startTime']).strftime('%b %d, %Y')}")
         await interaction.response.send_message(embed=embed)
 tree.add_command(contest)
 
@@ -129,10 +129,10 @@ async def identify(interaction: discord.Interaction, username: str):
 
     if len(recent_sub_list) == 0:
         # use add-two-integers
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on your most recent problem submission. If you don't have one, you can submit anything to [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n```Verifying with LeetCode Bot - {unique_code}```\nas a note on your most recent problem submission. If you don't have one, you can submit anything to [2235. Add Two Integers]({utils.PROBLEM_LINK}add-two-integers/)."
     else:
         last_sub = recent_sub_list[0]
-        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with Leetcode Bot - {unique_code}```\nas a note on either your most recent submission **[({last_sub['title']})]({utils.PROBLEM_LINK + last_sub['titleSlug']}/submissions/{last_sub['id']})** or on a new one."
+        embed.description = f"Please verify that you are `{username}` on LeetCode by adding\n\n```Verifying with LeetCode Bot - {unique_code}```\nas a note on either your most recent submission **[({last_sub['title']})]({utils.PROBLEM_LINK + last_sub['titleSlug']}/submissions/{last_sub['id']})** or on a new one."
 
     embed.set_footer(text="Click the button below when you're finished verifying")
 
@@ -184,7 +184,7 @@ class FinishIdentification(discord.ui.View):
         # check if the user has added the note
         recent_sub_list = await utils.get_user_recent_submissions(username)
         found = False
-        valid_note = f"Verifying with Leetcode Bot - {unique_code}"
+        valid_note = f"Verifying with LeetCode Bot - {unique_code}"
         for submission in recent_sub_list:
             if len(submission["notes"]) <= len(valid_note) + 4 and valid_note == str(submission["notes"]).strip():
                 found = True
@@ -238,21 +238,62 @@ async def profile(interaction: discord.Interaction, username: str = None):
         num_solved[category["difficulty"]] = category["count"]
     lines = [
         "**Contests**",
-        f"Rating: {round(user_info['rating'], 1)} {emojis.get_emoji(user_info["badge"])}",
-        f"Top {user_info["top_percentage"]}%",
+        f"Rating: {round(user_info['rating'], 1)} {emojis.get_emoji(user_info['badge'])}",
+        f"Top {user_info['top_percentage']}%",
         "",
         f"**Problems Solved:**",
-        f"Easy: {num_solved["Easy"]}",
-        f"Medium: {num_solved["Medium"]}",
-        f"Hard: {num_solved["Hard"]}",
-        f"Total: {num_solved["All"]}"
+        f"Easy: {num_solved['Easy']}",
+        f"Medium: {num_solved['Medium']}",
+        f"Hard: {num_solved['Hard']}",
+        f"Total: {num_solved['All']}"
     ]
 
     embed = discord.Embed()
-    embed.set_author(name=user_info["username"], icon_url=user_info["user_avatar"], url=f"https://leetcode.com/u/{user_info["username"]}")
+    embed.set_author(name=user_info["username"], icon_url=user_info["user_avatar"], url=f"https://leetcode.com/u/{user_info['username']}")
     embed.description = "\n".join(lines)
     await interaction.response.send_message(embed=embed)
 
+@tree.command(name="plot", description="Plots your Rating over Time")
+async def plot(interaction: discord.Interaction, username: str = None):
+    if username is None:
+        if interaction.user.id in verified_users:
+            username = verified_users[interaction.user.id]
+        else:
+            await interaction.response.send_message("Please specify a user to get information about.")
+            return
+    
+    if (len(username) > USERNAME_MAX_LENGTH):
+        await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+        return
+    
+    user_info = await utils.get_user_info(username)
+    if "error" in user_info:
+        embed = discord.Embed(title="Error", description=user_info["message"])
+        await interaction.response.send_message(embed=embed)
+        return
+        
+    date2 = await utils.get_user_contest_history(username)
+    contestList = date2["userContestRankingHistory"]
+    dates = []
+    points = []
+    for contest in contestList:
+        if (not contest["attended"]):
+            continue
+        
+        dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
+        points.append(int(contest["rating"]))
+
+    if (len(dates) > 0):
+        #Generate the chart as a buffer
+        chart_image = utils.create_line_chart(dates, points, username)
+
+        # Create a Discord file object from the buffer
+        file = discord.File(fp=chart_image, filename='chart.png')
+
+        # Send the image in the Discord channel
+        await interaction.response.send_message("Here is the rating over time chart:", file=file)
+    else:
+        await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
 # USELESS COMMANDS
 
 @tree.command(name="daily_time", description="sus", nsfw=True)
@@ -275,5 +316,5 @@ async def check_server():
         await utils.load_contest_info_data(check_server=True)
 
 
-test_bot = False
+test_bot = os.getenv("TESTING") == "True"
 bot.run(token=(os.getenv('BOT_TOKEN') if not test_bot else os.getenv('TEST_BOT_TOKEN')))
