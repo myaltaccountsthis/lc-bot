@@ -13,4 +13,4 @@ jobs:
     - uses: actions/checkout@v4
     - name: Build the Docker image
       working-directory: ./
-      run: pwd && ~/lc-bot/deploy.sh
+      run: ls && docker build -t lc-bot . && docker run -d -it --rm --env-file prod.env --network database_default --name lc-bot-app lc-bot
