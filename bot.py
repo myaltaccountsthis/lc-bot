@@ -304,7 +304,7 @@ async def gif(interaction: discord.Interaction):
 async def gif(interaction: discord.Interaction):
     await interaction.response.send_message("https://cdn.discordapp.com/attachments/1190447467720868024/1287496458878062716/leetcodegf.gif?ex=6716ac04&is=67155a84&hm=b45d538b2c2e0d9ef44018772ad23ea35284d1fd1825d90a143b1b924fe0fe82&")
 
-@tree.commandd(name="kiss", description="wowz", nsfw=True)
+@tree.command(name="kiss", description="wowz", nsfw=True)
 async def gif(interaction: discord.Interaction):
     await interaction.response.send_message("https://tenor.com/view/leetcode-kiss-black-girl-emo-gif-3418018854521131648")
 
