@@ -86,9 +86,9 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
         # add each hyperlink to the embed as a line in description
         embed.color = discord.Color.orange()
         embed.description = "\n".join([f"**{i + 1}.** [{question['title']}]({question['url']}) *({question['difficulty']})*"
-                                       for i, question in enumerate(contest_info["questions"])])
+                                       for i, question in enumerate(contest_info['questions'])])
 
-        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info["startTime"]).strftime('%b %d, %Y')}")
+        embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info['startTime']).strftime('%b %d, %Y')}")
         await interaction.response.send_message(embed=embed)
 tree.add_command(contest)
 
@@ -238,18 +238,18 @@ async def profile(interaction: discord.Interaction, username: str = None):
         num_solved[category["difficulty"]] = category["count"]
     lines = [
         "**Contests**",
-        f"Rating: {round(user_info['rating'], 1)} {emojis.get_emoji(user_info["badge"])}",
-        f"Top {user_info["top_percentage"]}%",
+        f"Rating: {round(user_info['rating'], 1)} {emojis.get_emoji(user_info['badge'])}",
+        f"Top {user_info['top_percentage']}%",
         "",
         f"**Problems Solved:**",
-        f"Easy: {num_solved["Easy"]}",
-        f"Medium: {num_solved["Medium"]}",
-        f"Hard: {num_solved["Hard"]}",
-        f"Total: {num_solved["All"]}"
+        f"Easy: {num_solved['Easy']}",
+        f"Medium: {num_solved['Medium']}",
+        f"Hard: {num_solved['Hard']}",
+        f"Total: {num_solved['All']}"
     ]
 
     embed = discord.Embed()
-    embed.set_author(name=user_info["username"], icon_url=user_info["user_avatar"], url=f"https://leetcode.com/u/{user_info["username"]}")
+    embed.set_author(name=user_info["username"], icon_url=user_info["user_avatar"], url=f"https://leetcode.com/u/{user_info['username']}")
     embed.description = "\n".join(lines)
     await interaction.response.send_message(embed=embed)
 
