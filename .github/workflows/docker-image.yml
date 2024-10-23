@@ -9,7 +9,10 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+    env:
+      working-directory: ./
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
+      working-directory: ${{GITHUB_WORKSPACE}}
       run: ./deploy.sh
