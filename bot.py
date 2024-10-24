@@ -279,7 +279,7 @@ async def plot(interaction: discord.Interaction, username: str = None):
     for user in userList:
         print(4)
         if (len(user) > USERNAME_MAX_LENGTH):
-            await interaction.followup.send(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+            await interaction.edit_original_response(content=f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
             print(5)
             return
         #print("user is " + str(user))
