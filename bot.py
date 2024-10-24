@@ -13,6 +13,8 @@ import emojis
 import utils
 import database
 
+import io
+from PIL import Image, ImageDraw, ImageFont
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
@@ -267,18 +269,20 @@ async def plot(interaction: discord.Interaction, username: str = None):
             username = verified_users[interaction.user.id]
         else:
             await interaction.response.send_message("Please specify a user to get information about.")
-            print(3)
+            #print(3)
             return
     userList = username.split(" ")
     userInfoList = []
-    
-    await interaction.response.send_message("Generating the chart, please wait...")
+    await interaction.response.send_message(content="Generating the chart, please wait...")
     for user in userList:
         if (len(user) > USERNAME_MAX_LENGTH):
             await interaction.edit_original_response(content=f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
             return
-        
-        date2 = await utils.get_user_contest_history(user)
+        try:
+            date2 = await utils.get_user_contest_history(user)
+        except:
+            await interaction.edit_original_response(content=(user + " is not a leetcode user."))
+            return
         contestList = date2["userContestRankingHistory"]
         dates = []
         points = []

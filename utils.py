@@ -154,11 +154,11 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     ax.set_ylim(min_points, max_points)
         # Rotate and align the x labels
     plt.gcf().autofmt_xdate()
-    ax.axhline(y=knightCutoff, color='blue', linestyle='--', label=f'Knight Cutoff: {knightCutoff}', zorder=1)
-    ax.axhline(y=guardianCutoff, color='red', linestyle='--', label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
+    ax.axhline(y=knightCutoff, color='blue', linestyle='--', zorder=1)#label=f'Knight Cutoff: {knightCutoff}', zorder=1)
+    ax.axhline(y=guardianCutoff, color='red', linestyle='--', zorder=1)#label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
     # Add labels for the cutoffs
-    #ax.text(user[0][-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
-    #ax.text(user[0][-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
+    ax.text(user[0][-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
+    ax.text(user[0][-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
         
     # Add labels and title
     plt.xlabel('Date')
@@ -175,7 +175,11 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     s = ""
     plt.title(s)
     # Add the legend for the cutoffs
-    plt.legend()
+    lX = 0.5
+    lY = 1.15
+    if (len(userInfoList) > 3):
+        lY = 1.18
+    plt.legend(loc='upper center', bbox_to_anchor=(lX, lY), ncol=3)
     #plt.show()
     # Save the figure to a buffer in PNG format
     buf = io.BytesIO()
