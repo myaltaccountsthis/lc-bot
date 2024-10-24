@@ -163,7 +163,7 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     # Add labels and title
     plt.xlabel('Date')
     plt.ylabel('Rating')
-    plt.title('Username: ' + str(userInfoList[0][2]))
+    #plt.title('Username: ' + str(userInfoList[0][2]))
     
     # Add the legend for the cutoffs
     plt.legend()
