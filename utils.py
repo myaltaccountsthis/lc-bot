@@ -163,8 +163,12 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     # Add labels and title
     plt.xlabel('Date')
     plt.ylabel('Rating')
-    #plt.title('Username: ' + str(userInfoList[0][2]))
-    
+    s = 'Username: ' + str(userInfoList[0][2])
+    if (str(userInfoList[0][2]).lower() == 'hastorius'):
+        s = "Hastorius of Mordor"
+    else:
+        s = ""
+    plt.title(s)
     # Add the legend for the cutoffs
     plt.legend()
     #plt.show()
