@@ -34,7 +34,7 @@ async def check_user_not_found(interaction: discord.Interaction, user_info):
 async def check_user_not_found_2(interaction: discord.Interaction, user_info):
     if "error" in user_info:
         embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
-        await interaction.followup.send(embed=embed)
+        await interaction.edit_original_response(content="",embed=embed)
         return True
     return False
 # BOT EVENTS
@@ -281,8 +281,10 @@ async def plot(interaction: discord.Interaction, username: str = None):
         try:
             date2 = await utils.get_user_contest_history(user)
         except:
-            await interaction.edit_original_response(content=(user + " is not a leetcode user."))
-            return
+            #await interaction.edit_original_response(content=(user + " is not a leetcode user."))
+            user_info = await utils.get_user_info(user)
+            if (await check_user_not_found_2(interaction, user_info)):
+                return
         contestList = date2["userContestRankingHistory"]
         dates = []
         points = []
