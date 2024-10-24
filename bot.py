@@ -310,6 +310,7 @@ async def plot(interaction: discord.Interaction, username: str = None):
         chart_image = utils.create_line_chart(userInfoList)
         file = discord.File(fp=chart_image, filename='chart.png')
         #print(8)
+        await interaction.edit_original_response(content="Finished Graphing Below")
         await interaction.followup.send("Here is the rating over time chart:", file=file)
     else:
         #print(9)
