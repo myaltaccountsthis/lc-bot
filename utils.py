@@ -157,17 +157,22 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     ax.axhline(y=knightCutoff, color='blue', linestyle='--', label=f'Knight Cutoff: {knightCutoff}', zorder=1)
     ax.axhline(y=guardianCutoff, color='red', linestyle='--', label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
     # Add labels for the cutoffs
-    ax.text(user[0][-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
-    ax.text(user[0][-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
+    #ax.text(user[0][-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
+    #ax.text(user[0][-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
         
     # Add labels and title
     plt.xlabel('Date')
     plt.ylabel('Rating')
+    '''
     s = 'Username: ' + str(userInfoList[0][2])
     if (str(userInfoList[0][2]).lower() == 'hastorius'):
         s = "Hastorius of Mordor"
+    elif (str(userInfoList[0][2]).lower() == 'sahasrad'):
+        s = "Chippi Chappa"
     else:
         s = ""
+    '''
+    s = ""
     plt.title(s)
     # Add the legend for the cutoffs
     plt.legend()

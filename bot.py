@@ -265,24 +265,19 @@ async def plot(interaction: discord.Interaction, username: str = None):
     if username is None:
         if interaction.user.id in verified_users:
             username = verified_users[interaction.user.id]
-            #print(2)
         else:
             await interaction.response.send_message("Please specify a user to get information about.")
             print(3)
             return
     userList = username.split(" ")
-    #print(username)
     userInfoList = []
-    #print("username is " + str(userList))
     
     await interaction.response.send_message("Generating the chart, please wait...")
     for user in userList:
-        #print(4)
         if (len(user) > USERNAME_MAX_LENGTH):
             await interaction.edit_original_response(content=f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
-            #print(5)
             return
-        #print("user is " + str(user))
+        
         date2 = await utils.get_user_contest_history(user)
         contestList = date2["userContestRankingHistory"]
         dates = []
@@ -293,27 +288,16 @@ async def plot(interaction: discord.Interaction, username: str = None):
             #print("attended another contest")
             dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
             points.append(int(contest["rating"]))
-            #print(str(len(dates)) + " is the size of dates")
-        #print("got to point 1")
-        if (len(dates) > 0):
-            #print("got to point 2")
-            userInfoList.append([dates, points, user])
-            #Generate the chart as a buffer
-            #chart_image = utils.create_line_chart(dates, points, username)
 
-        # Create a Discord file object from the buffer
-        
-    # Send the image in the Discord channel
-    #print(len(userInfoList))
-    #print(7)
+        if (len(dates) > 0):
+            userInfoList.append([dates, points, user])
+
     if (len(userInfoList) > 0):
         chart_image = utils.create_line_chart(userInfoList)
         file = discord.File(fp=chart_image, filename='chart.png')
-        #print(8)
         await interaction.edit_original_response(content="Finished Graphing Below")
         await interaction.followup.send("Here is the rating over time chart:", file=file)
     else:
-        #print(9)
         await interaction.followup.send("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
 
 
