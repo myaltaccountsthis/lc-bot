@@ -301,10 +301,12 @@ async def plot(interaction: discord.Interaction, username: str = None):
     if (len(userInfoList) > 0):
         chart_image = utils.create_line_chart(userInfoList)
         file = discord.File(fp=chart_image, filename='chart.png')
-        await interaction.edit_original_response(content="Finished Graphing Below")
+        #embed=discord.Embed(title="Chart", description="Here is the rating over time chart:", color=discord.Color.blue())
+        #embed.set_image(url="attachment://chart.png")
+        #await (await interaction.original_response()).edit(embed=embed, content="abc"); 
         await interaction.followup.send("Here is the rating over time chart:", file=file)
     else:
-        await interaction.followup.send("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
+        await interaction.edit_original_response(content="What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
 
 
 # load data from server
