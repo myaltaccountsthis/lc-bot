@@ -97,6 +97,8 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
 
     # Create the plot
     fig, ax = plt.subplots()
+    fig.set_figwidth(8)
+    fig.set_figheight(6)
 
     # Define the Codeforces divisions and their exact colors
     divisions = [
@@ -156,10 +158,10 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     plt.gcf().autofmt_xdate()
     if (min_points < 1650 and max_points > 1650):
         ax.axhline(y=knightCutoff, color='blue', linestyle='--',zorder=1)# label=f'Knight Cutoff: {knightCutoff}', zorder=1)
-        ax.text(user[0][0], knightCutoff,  f'Knight Cutoff: {knightCutoff}', color='blue', verticalalignment='bottom', horizontalalignment='left')
+        ax.text(user[0][0], knightCutoff,  f'Knight - {knightCutoff}', color='blue', verticalalignment='bottom', horizontalalignment='left')
     if (min_points < 2150 and max_points > 2150):
         ax.axhline(y=guardianCutoff, color='red', linestyle='--',zorder=1)# label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
-        ax.text(user[0][0], guardianCutoff,f'Guardian Cutoff: {guardianCutoff}', color='red', verticalalignment='bottom', horizontalalignment='left')
+        ax.text(user[0][0], guardianCutoff,f'Guardian - {guardianCutoff}', color='red', verticalalignment='bottom', horizontalalignment='left')
     # Add labels for the cutoffs
         
     # Add labels and title
