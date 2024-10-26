@@ -13,6 +13,8 @@ import emojis
 import utils
 import database
 
+import io
+from PIL import Image, ImageDraw, ImageFont
 load_dotenv()
 
 bot = discord.Client(intents=discord.Intents.default())
@@ -29,6 +31,12 @@ async def check_user_not_found(interaction: discord.Interaction, user_info):
         return True
     return False
 
+async def check_user_not_found_2(interaction: discord.Interaction, user_info):
+    if "error" in user_info:
+        embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
+        await interaction.edit_original_response(content="",embed=embed)
+        return True
+    return False
 # BOT EVENTS
 
 @bot.event
@@ -255,43 +263,47 @@ async def profile(interaction: discord.Interaction, username: str = None):
 
 @tree.command(name="plot", description="Plots your Rating over Time")
 async def plot(interaction: discord.Interaction, username: str = None):
+    
     if username is None:
         if interaction.user.id in verified_users:
             username = verified_users[interaction.user.id]
         else:
             await interaction.response.send_message("Please specify a user to get information about.")
+            #print(3)
             return
-    
-    if (len(username) > USERNAME_MAX_LENGTH):
-        await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
-        return
-    
-    user_info = await utils.get_user_info(username)
-    if (await check_user_not_found(interaction, user_info)):
-        return
-        
-    date2 = await utils.get_user_contest_history(username)
-    contestList = date2["userContestRankingHistory"]
-    dates = []
-    points = []
-    for contest in contestList:
-        if (not contest["attended"]):
-            continue
-        
-        dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
-        points.append(int(contest["rating"]))
+    userList = username.split(" ")
+    userInfoList = []
+    await interaction.response.send_message(content="Generating the chart, please wait...")
+    for user in userList:
+        if (len(user) > USERNAME_MAX_LENGTH):
+            await interaction.edit_original_response(content=f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+            return
+        try:
+            date2 = await utils.get_user_contest_history(user)
+        except:
+            #await interaction.edit_original_response(content=(user + " is not a leetcode user."))
+            user_info = await utils.get_user_info(user)
+            if (await check_user_not_found_2(interaction, user_info)):
+                return
+        contestList = date2["userContestRankingHistory"]
+        dates = []
+        points = []
+        for contest in contestList:
+            if (not contest["attended"]):
+                continue
+            #print("attended another contest")
+            dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
+            points.append(int(contest["rating"]))
 
-    if (len(dates) > 0):
-        #Generate the chart as a buffer
-        chart_image = utils.create_line_chart(dates, points, username)
+        if (len(dates) > 0):
+            userInfoList.append([dates, points, user])
 
-        # Create a Discord file object from the buffer
+    if (len(userInfoList) > 0):
+        chart_image = utils.create_line_chart(userInfoList)
         file = discord.File(fp=chart_image, filename='chart.png')
-
-        # Send the image in the Discord channel
-        await interaction.response.send_message("Here is the rating over time chart:", file=file)
+        await interaction.edit_original_response(content="Here is the rating over time chart:", attachments=[file])
     else:
-        await interaction.response.send_message("What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
+        await interaction.edit_original_response(content="What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
 
 
 # load data from server

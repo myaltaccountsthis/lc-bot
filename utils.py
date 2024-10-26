@@ -80,17 +80,25 @@ async def load_question_data(check_server=False, force_fetch=False):
 
 #import discord
 
-def create_line_chart(dates, points, username, knightCutoff=1850, guardianCutoff=2150):
+def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dates, points, username, knightCutoff=1850, guardianCutoff=2150):
     # Convert string dates to datetime objects if necessary
-    dates = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in dates]
+    #dates = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in userInfoList[0]]
     # print(len(dates))
     # print(len(points))
     # Determine the min and max points to set y-axis limits
-    min_points = min(points) - 100  # Adding a bit of padding
-    max_points = max(points) + 100
+    min_points = 99999
+    max_points = 0
+    #print(userInfoList)
+    for user in userInfoList:
+        min_points = min(min(user[1]), min_points)  # Adding a bit of padding
+        max_points = max(max(user[1]), max_points)
+    max_points += 100
+    min_points -= 100
 
     # Create the plot
     fig, ax = plt.subplots()
+    fig.set_figwidth(8)
+    fig.set_figheight(6)
 
     # Define the Codeforces divisions and their exact colors
     divisions = [
@@ -110,31 +118,73 @@ def create_line_chart(dates, points, username, knightCutoff=1850, guardianCutoff
         if lower_bound <= max_points and upper_bound >= min_points:
             ax.axhspan(max(lower_bound, min_points), min(upper_bound, max_points), facecolor=color, alpha=0.8, zorder=-2)
 
+
     # Plot the data
-    ax.plot(dates, points, marker='o', linestyle='-', color='black', markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2)
-
-    # Add horizontal lines for knight and guardian cutoffs
-    ax.axhline(y=knightCutoff, color='blue', linestyle='--', label=f'Knight Cutoff: {knightCutoff}', zorder=1)
-    ax.axhline(y=guardianCutoff, color='red', linestyle='--', label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
-    # Add labels for the cutoffs
-    ax.text(dates[-1], knightCutoff, "", color='blue', verticalalignment='bottom', horizontalalignment='left')
-    ax.text(dates[-1], guardianCutoff, "", color='red', verticalalignment='bottom', horizontalalignment='left')
-    # Format the date on the x-axis
+    for x in range(len(userInfoList)):
+        user = userInfoList[x]
+        #print(user)
+        #print(user[0])
+        #print(user[1])
+        user0 = user[0]
+        user1 = user[1]
+        user2 = user[2]
+        #user0 = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in user[0]]
+        color = "black"
+        if x == 1:
+            color = "blue"
+        if x == 2:
+            color = "green"
+        if x == 3:
+            color = "purple"
+        if x == 4:
+            color = "red"
+        if x == 5:
+            color = "orange"
+        if x == 6:
+            color = 'tan'
+        ax.plot(user0, user1, marker='o', linestyle='-', color=color, markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2, label=user2)
+        # Add horizontal lines for knight and guardian cutoffs
+        # Format the date on the x-axis
+        #ax.plot(user[0], user[1], label='Line 2', color='green', marker='x', markersize=9)
+        #break
+    
+    #ax.plot(userInfoList[0][1], userInfoList[0][0], marker='o', linestyle='-', color='black', markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2)
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-    #ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Adjust the interval as necessary
+        #ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # Adjust the interval as necessary
     ax.xaxis.set_major_locator(plt.MaxNLocator(10))
-    # Set the y-axis limits dynamically based on the data
+        # Set the y-axis limits dynamically based on the data
     ax.set_ylim(min_points, max_points)
-    # Rotate and align the x labels
+        # Rotate and align the x labels
     plt.gcf().autofmt_xdate()
-
+    if (min_points < 1650 and max_points > 1650):
+        ax.axhline(y=knightCutoff, color='blue', linestyle='--',zorder=1)# label=f'Knight Cutoff: {knightCutoff}', zorder=1)
+        ax.text(user[0][0], knightCutoff,  f'Knight - {knightCutoff}', color='blue', verticalalignment='bottom', horizontalalignment='left')
+    if (min_points < 2150 and max_points > 2150):
+        ax.axhline(y=guardianCutoff, color='red', linestyle='--',zorder=1)# label=f'Guardian Cutoff: {guardianCutoff}', zorder = 1)
+        ax.text(user[0][0], guardianCutoff,f'Guardian - {guardianCutoff}', color='red', verticalalignment='bottom', horizontalalignment='left')
+    # Add labels for the cutoffs
+        
     # Add labels and title
     plt.xlabel('Date')
     plt.ylabel('Rating')
-    plt.title('Username: ' + str(username))
-    
+    '''
+    s = 'Username: ' + str(userInfoList[0][2])
+    if (str(userInfoList[0][2]).lower() == 'hastorius'):
+        s = "Hastorius of Mordor"
+    elif (str(userInfoList[0][2]).lower() == 'sahasrad'):
+        s = "Chippi Chappa"
+    else:
+        s = ""
+    '''
+    s = ""
+    plt.title(s)
     # Add the legend for the cutoffs
-    plt.legend()
+    lX = 0.5
+    lY = 1.15
+    if (len(userInfoList) > 3):
+        lY = 1.18
+    plt.legend(loc='upper center', bbox_to_anchor=(lX, lY), ncol=3)
+    #plt.show()
     # Save the figure to a buffer in PNG format
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
@@ -316,5 +366,5 @@ def convert_timestamp_to_date(timestamp):
     # Convert the timestamp to a datetime object
     date_time = datetime.utcfromtimestamp(timestamp)
     # Format the date to a string in 'YYYY-MM-DD' format
-    date_string = date_time.strftime('%Y-%m-%d')
-    return date_string
+    #date_string = date_time.strftime('%Y-%m-%d')
+    return date_time
