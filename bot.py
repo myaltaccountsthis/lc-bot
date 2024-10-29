@@ -4,6 +4,7 @@ from datetime import datetime
 from fileinput import filename
 from importlib.metadata import files
 from itertools import compress
+from functools import cmp_to_key
 
 import discord
 from discord import app_commands
@@ -104,6 +105,42 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
                                        for i, question in enumerate(contest_info['questions'])])
 
         embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info['startTime']).strftime('%b %d, %Y')}")
+        await interaction.response.send_message(embed=embed)
+
+@contest.command(name="ranking", description="Get the rankings of a specific contest")
+@app_commands.choices(contest_type=[
+    app_commands.Choice(name="Weekly", value="weekly"),
+    app_commands.Choice(name="Biweekly", value="biweekly")
+])
+async def ranking(interaction: discord.Interaction, contest_type: app_commands.Choice[str] = None, contest_number: int = None):
+    contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    if contest_info is None:
+        await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+    elif type(contest_info) == str:
+        await interaction.response.send_message(contest_info)
+    else:
+        embed = discord.Embed(title=f"{contest_info['title']} Rankings", url=contest_info["url"])
+        embed.color = discord.Color.red()
+        num_questions = await utils.get_contest_info(contest_type.value, contest_number)
+        num_questions = len(num_questions["questions"])
+        # has username, rank, rating, and solved
+        user_info = await utils.get_contest_ranking(contest_type.value, contest_number, list(verified_users.values()))
+        sorted(user_info, key=cmp_to_key(lambda item1, item2: item1["rank"] - item2["rank"]))
+
+        colWidths = [len("Rank"), len("Username"), len("="), len("Finish Time"), len("Rating")]
+        for user in user_info:
+            colWidths[0] = max(colWidths[0], len(str(user["rank"])))
+            colWidths[1] = max(colWidths[1], len(user["username"]))
+            colWidths[2] = max(colWidths[2], len(f"{user['solved']}/{num_questions}"))
+            colWidths[3] = max(colWidths[3], len(user["time"]))
+            colWidths[4] = max(colWidths[4], len(str(user["rating"])))
+        colWidths[1] = min(colWidths[1], 12)
+
+        description = f"```{"#":>{colWidths[0]}}  {"Username".center(colWidths[1])}  {"=".center(colWidths[2])}  {"Finish Time".center(colWidths[3])}  {"Rating".center(colWidths[4])}\n"
+        description += f"{"  ".join(['-' * colWidth for colWidth in colWidths])}\n"
+        description += "\n".join([f"{user['rank']:>{colWidths[0]}}  {user['username'][:colWidths[1] - 3] + "..." if len(user['username']) > colWidths[1] else user['username']:<{colWidths[1]}}  {str(user['solved']) + '/' + str(num_questions):>{colWidths[2]}}  {user['time']:>{colWidths[3]}}  {user['rating']:>{colWidths[4]}}" for user in user_info])
+        description += "```"
+        embed.description = description
         await interaction.response.send_message(embed=embed)
 tree.add_command(contest)
 
