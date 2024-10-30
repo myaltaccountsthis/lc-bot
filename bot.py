@@ -4,6 +4,7 @@ from datetime import datetime
 from fileinput import filename
 from importlib.metadata import files
 from itertools import compress
+from functools import cmp_to_key
 
 import discord
 from discord import app_commands
@@ -105,6 +106,54 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
 
         embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info['startTime']).strftime('%b %d, %Y')}")
         await interaction.response.send_message(embed=embed)
+
+# Command to get the rankings of verified users in the server for a given contest
+@contest.command(name="ranking", description="Get the rankings of a specific contest")
+@app_commands.choices(contest_type=[
+    app_commands.Choice(name="Weekly", value="weekly"),
+    app_commands.Choice(name="Biweekly", value="biweekly")
+])
+async def ranking(interaction: discord.Interaction, contest_type: app_commands.Choice[str] = None, contest_number: int = None):
+    contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    if contest_info is None:
+        await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+        return
+    if type(contest_info) == str:
+        await interaction.response.send_message(contest_info)
+        return
+    
+    # has username, rank, rating, and solved
+    user_info = await utils.get_contest_ranking(contest_type.value if contest_type else None, contest_number, list(verified_users.values()))
+    if isinstance(user_info, str):
+        await interaction.response.send_message(user_info)
+        return
+    
+    # Make the embed
+    await interaction.response.defer()
+    embed = discord.Embed(title=f"{contest_info['title']} Rankings", url=contest_info["url"])
+    embed.color = discord.Color.red()
+    num_questions = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    num_questions = len(num_questions["questions"])
+    user_info = sorted(user_info, key=cmp_to_key(lambda item1, item2: item1['rank'] - item2['rank']))
+
+    # Column widths for formatting
+    colWidths = [len("Rank"), len("Username"), len("="), len("Finish Time"), len("Rating")]
+    for user in user_info:
+        colWidths[0] = max(colWidths[0], len(str(user["rank"])))
+        colWidths[1] = max(colWidths[1], len(user["username"]))
+        colWidths[2] = max(colWidths[2], len(f"{user['solved']}/{num_questions}"))
+        colWidths[3] = max(colWidths[3], len(user["time"]))
+        colWidths[4] = max(colWidths[4], len(str(user["rating"])))
+    colWidths[1] = min(colWidths[1], 12)
+
+    # Make the table
+    description = f"```graphql\n{"#":>{colWidths[0]}}  {"Username".center(colWidths[1])}  {"=".center(colWidths[2])}  {"Finish Time".center(colWidths[3])}  {"Rating".center(colWidths[4])}\n"
+    description += f"{"  ".join(['-' * colWidth for colWidth in colWidths])}\n"
+    description += "\n".join([f"{user['rank']:>{colWidths[0]}}  {user['username'][:colWidths[1] - 3] + "..." if len(user['username']) > colWidths[1] else user['username']:<{colWidths[1]}}  {str(user['solved']) + '/' + str(num_questions):>{colWidths[2]}}  {user['time']:>{colWidths[3]}}  {user['rating']:>{colWidths[4]}}" for user in user_info])
+    description += "```"
+    embed.description = description
+    await interaction.followup.send(embed=embed)
+
 tree.add_command(contest)
 
 
@@ -262,21 +311,21 @@ async def profile(interaction: discord.Interaction, username: str = None):
     await interaction.response.send_message(embed=embed)
 
 @tree.command(name="plot", description="Plots your Rating over Time")
-async def plot(interaction: discord.Interaction, username: str = None):
+async def plot(interaction: discord.Interaction, usernames: str = None):
     
-    if username is None:
+    if usernames is None:
         if interaction.user.id in verified_users:
-            username = verified_users[interaction.user.id]
+            usernames = verified_users[interaction.user.id]
         else:
             await interaction.response.send_message("Please specify a user to get information about.")
             #print(3)
             return
-    userList = username.split(" ")
+    userList = usernames.split(" ")
     userInfoList = []
-    await interaction.response.send_message(content="Generating the chart, please wait...")
+    await interaction.response.defer()
     for user in userList:
         if (len(user) > USERNAME_MAX_LENGTH):
-            await interaction.edit_original_response(content=f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+            await interaction.followup.send(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
             return
         try:
             date2 = await utils.get_user_contest_history(user)
@@ -301,9 +350,9 @@ async def plot(interaction: discord.Interaction, username: str = None):
     if (len(userInfoList) > 0):
         chart_image = utils.create_line_chart(userInfoList)
         file = discord.File(fp=chart_image, filename='chart.png')
-        await interaction.edit_original_response(content="Here is the rating over time chart:", attachments=[file])
+        await interaction.followup.send("Here is the rating over time chart:", files=[file])
     else:
-        await interaction.edit_original_response(content="What a loser, " + str(username) + " hasn't even done a single LeetCode contest.")
+        await interaction.followup.send("What a loser, " + str(usernames) + " hasn't even done a single LeetCode contest.")
 
 
 # load data from server

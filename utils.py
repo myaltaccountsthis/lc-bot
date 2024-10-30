@@ -18,6 +18,7 @@ question_data = []
 contest_info_data = []
 question_info_from_slug = {}
 contest_info_from_slug = {}
+contest_id_from_slug = {}
 
 # Loads the question data by calling the query, stores into array by id, TIME_EXPENSIVE
 async def load_question_data(check_server=False, force_fetch=False):
@@ -125,9 +126,9 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
         #print(user)
         #print(user[0])
         #print(user[1])
-        user0 = user[0]
-        user1 = user[1]
-        user2 = user[2]
+        dates = user[0]
+        points = user[1]
+        username = user[2]
         #user0 = [datetime.strptime(date, '%Y-%m-%d') if isinstance(date, str) else date for date in user[0]]
         color = "black"
         if x == 1:
@@ -142,7 +143,7 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
             color = "orange"
         if x == 6:
             color = 'tan'
-        ax.plot(user0, user1, marker='o', linestyle='-', color=color, markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2, label=user2)
+        ax.plot(dates, points, marker='o', linestyle='-', color=color, markerfacecolor='white', markeredgecolor='black', markersize=3, zorder=2, label=username)
         # Add horizontal lines for knight and guardian cutoffs
         # Format the date on the x-axis
         #ax.plot(user[0], user[1], label='Line 2', color='green', marker='x', markersize=9)
@@ -194,7 +195,7 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
 
 # Loads the contest info data by calling the query, stores into array and dict, TIME_EXPENSIVE
 async def load_contest_info_data(check_server=False, force_fetch=False):
-    global contest_info_data, contest_info_from_slug
+    global contest_info_data, contest_info_from_slug, contest_id_from_slug
     await load_question_data()
 
     fetched = False
@@ -210,9 +211,8 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
             with open(CONTEST_PATH, "r") as file:
                 result = eval(file.read())
             print("Loaded all contest data from file!")
-
+        
         contest_info_data = result
-
         # Store the contest info into a dict for easy access
         for contest in result:
             contest["url"] = CONTEST_LINK + contest["titleSlug"]
@@ -229,8 +229,7 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
         result = result["pastContests"]["data"]
         loaded = 0
 
-        # prepend ones that are missing into contest_info_data,
-        result = result[::-1]
+        # prepend ones that are missing into contest_info_data
         for contest in result:
             if contest["titleSlug"] not in contest_info_from_slug:
                 contest["url"] = CONTEST_LINK + contest["titleSlug"]
@@ -239,7 +238,7 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
                     question["url"] = question_from_slug["url"]
                     question["difficulty"] = question_from_slug["difficulty"]
                 contest_info_from_slug[contest["titleSlug"]] = contest
-                contest_info_data.insert(0, contest)
+                contest_info_data.append(contest)
                 loaded += 1
 
         if loaded > 0:
@@ -254,6 +253,9 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
             contest_info_data = []
             print("More than 10 contest data likely missing, doing a full reload")
             await load_contest_info_data(force_fetch=True)
+
+    for i in range(len(contest_info_data)):
+        contest_id_from_slug[contest_info_data[i]["titleSlug"]] = i
 
 
 # Returns the link of a random question
@@ -276,6 +278,16 @@ async def get_contest_info(contest_type, contest_number):
 
     await load_contest_info_data()
 
+    title_slug = await get_valid_title_slug(contest_type, contest_number)
+
+    # Check if the contest exists
+    if title_slug not in contest_info_from_slug:
+        return None
+    return contest_info_from_slug[title_slug]
+
+# Get the title slug for the given contest type and number, returns most recent if params are None
+async def get_valid_title_slug(contest_type, contest_number):
+    title_slug = ""
     # Creating a valid title slug
     if contest_number is None:
         if contest_type is None:
@@ -294,11 +306,44 @@ async def get_contest_info(contest_type, contest_number):
         title_slug = f"{contest_type}-contest-{contest_number}"
         if contest_type == "weekly" and contest_number < 58:
             title_slug = "leetcode-" + title_slug
+    return title_slug
 
-    # Check if the contest exists
-    if title_slug not in contest_info_from_slug:
-        return None
-    return contest_info_from_slug[title_slug]
+# Gets the information of all users in userList, returning their rank, rating, problems solved, and time
+# userList is a list containing usernames
+async def get_contest_ranking(contest_type, contest_number, userList):
+    if contest_type is None and contest_number:
+        return "You cannot specify a contest number without a contest type"
+    
+    title_slug = await get_valid_title_slug(contest_type, contest_number)
+    user_info = []
+    for user in userList:
+        user_data = await get_user_contest_history(user)
+        contests = user_data["userContestRankingHistory"]
+        
+        if title_slug not in contest_info_from_slug:
+            return title_slug + " does not exist"
+        
+        contest = None
+        for c in contests:
+            if c["contest"]["titleSlug"] == title_slug:
+                contest = c
+                break
+        if contest is None:
+            return "Ratings aren't out for " + contest_info_from_slug[title_slug]["title"]
+        if contest["attended"]:
+            user_info.append({
+                "username": user,
+                "rank": contest["ranking"],
+                "rating": contest["rating"],
+                "solved": contest["problemsSolved"],
+                "time": convert_seconds_to_time(contest["finishTimeInSeconds"])
+            })
+
+    if len(user_info) == 0:
+        return "No participants found for " + contest_info_from_slug[title_slug]["title"]
+
+    return user_info
+
 
 # Returns general user info, including contest rating, problems solved, etc.
 async def get_user_info(user_slug):
@@ -368,3 +413,10 @@ def convert_timestamp_to_date(timestamp):
     # Format the date to a string in 'YYYY-MM-DD' format
     #date_string = date_time.strftime('%Y-%m-%d')
     return date_time
+
+def convert_seconds_to_time(seconds):
+    # Convert the seconds to a datetime object
+    time = datetime.utcfromtimestamp(seconds)
+    # Format the time to a string in 'HH:MM:SS' format
+    time_string = time.strftime('%H:%M:%S')
+    return time_string
