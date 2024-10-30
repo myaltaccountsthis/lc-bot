@@ -123,7 +123,6 @@ def create_line_chart(userInfoList, knightCutoff=1850, guardianCutoff=2150):#dat
     # Plot the data
     for x in range(len(userInfoList)):
         user = userInfoList[x]
-        print(user)
         #print(user)
         #print(user[0])
         #print(user[1])
