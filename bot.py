@@ -107,6 +107,7 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
         embed.set_footer(text=f"Contest held on {datetime.fromtimestamp(contest_info['startTime']).strftime('%b %d, %Y')}")
         await interaction.response.send_message(embed=embed)
 
+# Command to get the rankings of verified users in the server for a given contest
 @contest.command(name="ranking", description="Get the rankings of a specific contest")
 @app_commands.choices(contest_type=[
     app_commands.Choice(name="Weekly", value="weekly"),
@@ -120,18 +121,22 @@ async def ranking(interaction: discord.Interaction, contest_type: app_commands.C
     if type(contest_info) == str:
         await interaction.response.send_message(contest_info)
         return
-    await interaction.response.defer()
-    embed = discord.Embed(title=f"{contest_info['title']} Rankings", url=contest_info["url"])
-    embed.color = discord.Color.red()
-    num_questions = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
-    num_questions = len(num_questions["questions"])
+    
     # has username, rank, rating, and solved
     user_info = await utils.get_contest_ranking(contest_type.value if contest_type else None, contest_number, list(verified_users.values()))
     if isinstance(user_info, str):
         await interaction.response.send_message(user_info)
         return
+    
+    # Make the embed
+    await interaction.response.defer()
+    embed = discord.Embed(title=f"{contest_info['title']} Rankings", url=contest_info["url"])
+    embed.color = discord.Color.red()
+    num_questions = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
+    num_questions = len(num_questions["questions"])
     user_info = sorted(user_info, key=cmp_to_key(lambda item1, item2: item1['rank'] - item2['rank']))
 
+    # Column widths for formatting
     colWidths = [len("Rank"), len("Username"), len("="), len("Finish Time"), len("Rating")]
     for user in user_info:
         colWidths[0] = max(colWidths[0], len(str(user["rank"])))
@@ -141,6 +146,7 @@ async def ranking(interaction: discord.Interaction, contest_type: app_commands.C
         colWidths[4] = max(colWidths[4], len(str(user["rating"])))
     colWidths[1] = min(colWidths[1], 12)
 
+    # Make the table
     description = f"```graphql\n{"#":>{colWidths[0]}}  {"Username".center(colWidths[1])}  {"=".center(colWidths[2])}  {"Finish Time".center(colWidths[3])}  {"Rating".center(colWidths[4])}\n"
     description += f"{"  ".join(['-' * colWidth for colWidth in colWidths])}\n"
     description += "\n".join([f"{user['rank']:>{colWidths[0]}}  {user['username'][:colWidths[1] - 3] + "..." if len(user['username']) > colWidths[1] else user['username']:<{colWidths[1]}}  {str(user['solved']) + '/' + str(num_questions):>{colWidths[2]}}  {user['time']:>{colWidths[3]}}  {user['rating']:>{colWidths[4]}}" for user in user_info])

@@ -285,6 +285,7 @@ async def get_contest_info(contest_type, contest_number):
         return None
     return contest_info_from_slug[title_slug]
 
+# Get the title slug for the given contest type and number, returns most recent if params are None
 async def get_valid_title_slug(contest_type, contest_number):
     title_slug = ""
     # Creating a valid title slug
@@ -307,6 +308,8 @@ async def get_valid_title_slug(contest_type, contest_number):
             title_slug = "leetcode-" + title_slug
     return title_slug
 
+# Gets the information of all users in userList, returning their rank, rating, problems solved, and time
+# userList is a list containing usernames
 async def get_contest_ranking(contest_type, contest_number, userList):
     if contest_type is None and contest_number:
         return "You cannot specify a contest number without a contest type"
