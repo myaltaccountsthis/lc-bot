@@ -114,22 +114,22 @@ async def info(interaction: discord.Interaction, contest_type: app_commands.Choi
     app_commands.Choice(name="Biweekly", value="biweekly")
 ])
 async def ranking(interaction: discord.Interaction, contest_type: app_commands.Choice[str] = None, contest_number: int = None):
+    await interaction.response.defer()
     contest_info = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
     if contest_info is None:
-        await interaction.response.send_message(f"Could not find {contest_type.name} Contest {contest_number}.")
+        await interaction.followup.send(f"Could not find {contest_type.name} Contest {contest_number}.")
         return
     if type(contest_info) == str:
-        await interaction.response.send_message(contest_info)
+        await interaction.followup.send(contest_info)
         return
     
     # has username, rank, rating, and solved
     user_info = await utils.get_contest_ranking(contest_type.value if contest_type else None, contest_number, list(verified_users.values()))
     if isinstance(user_info, str):
-        await interaction.response.send_message(user_info)
+        await interaction.followup.send(user_info)
         return
     
     # Make the embed
-    await interaction.response.defer()
     embed = discord.Embed(title=f"{contest_info['title']} Rankings", url=contest_info["url"])
     embed.color = discord.Color.red()
     num_questions = await utils.get_contest_info(contest_type.value if contest_type else None, contest_number)
