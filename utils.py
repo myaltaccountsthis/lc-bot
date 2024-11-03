@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime
 import io
+import asyncio
 import discord
-import gql.transport.exceptions
 
 import query
 
@@ -310,15 +310,16 @@ async def get_valid_title_slug(contest_type, contest_number):
 
 # Gets the information of all users in userList, returning their rank, rating, problems solved, and time
 # userList is a list containing usernames
-async def get_contest_ranking(contest_type, contest_number, userList):
+async def get_contest_ranking(contest_type, contest_number, user_list):
     if contest_type is None and contest_number:
         return "You cannot specify a contest number without a contest type"
     
     title_slug = await get_valid_title_slug(contest_type, contest_number)
     user_info = []
-    for user in userList:
-        user_data = await get_user_contest_history(user)
-        contests = user_data["userContestRankingHistory"]
+    user_data_list = await get_batch_user_contest_history(user_list)
+
+    for i, username in enumerate(user_list):
+        contests = user_data_list[i]["userContestRankingHistory"]
         
         if title_slug not in contest_info_from_slug:
             return title_slug + " does not exist"
@@ -332,7 +333,7 @@ async def get_contest_ranking(contest_type, contest_number, userList):
             return "Ratings aren't out for " + contest_info_from_slug[title_slug]["title"]
         if contest["attended"]:
             user_info.append({
-                "username": user,
+                "username": username,
                 "rank": contest["ranking"],
                 "rating": contest["rating"],
                 "solved": contest["problemsSolved"],
@@ -346,11 +347,9 @@ async def get_contest_ranking(contest_type, contest_number, userList):
 
 
 # Returns general user info, including contest rating, problems solved, etc.
-async def get_user_info(user_slug):
-    user_info = None
-    try:
-        user_info = await query.do_query("userProfile", values={"username": user_slug})
-    except gql.transport.exceptions.TransportQueryError:
+async def get_user_info(user_slug: str):
+    user_info = await query.do_query("userProfile", values={"username": user_slug})
+    if not user_info:
         return { "message": f"User `{user_slug}` does not exist", "error": True }
 
     if user_info["userContestRanking"] is None:
@@ -383,20 +382,32 @@ async def get_user_info(user_slug):
         "problems_solved": user_info["matchedUser"]["submitStatsGlobal"],
     }
 
-async def get_user_recent_solves(user_slug, limit = 10):
+async def get_user_recent_solves(user_slug: str, limit = 10):
     recent_solves = await query.do_query("userRecentAcSubmissions", values={"username": user_slug, "limit": limit})
     # TODO error handling
     return recent_solves["recentAcSubmissionList"]
 
-async def get_user_recent_submissions(user_slug, limit = 10):
+async def get_user_recent_submissions(user_slug: str, limit = 10):
     recent_submissions = await query.do_query("userRecentSubmissions", values={"username": user_slug, "limit": limit})
     # TODO error handling
     return recent_submissions["recentSubmissionList"]
 
-async def get_user_contest_history(user_slug):
-    recent_contests= await query.do_query("userContestHistory", values={"username": user_slug})
-    # TODO error handling
+async def get_user_contest_history(user_slug: str):
+    recent_contests = await query.do_query("userContestHistory", values={"username": user_slug})
+    if not recent_contests:
+        return { "message": f"User `{user_slug}` does not exist", "error": True }
     return recent_contests
+
+async def get_batch(func, user_slugs: list):
+    task_results = []
+    async with asyncio.TaskGroup() as tg:
+        for user in user_slugs:
+            task_results.append(tg.create_task(func(user)))
+
+    return await asyncio.gather(*task_results)
+
+async def get_batch_user_contest_history(user_slugs: list[str]):
+    return await get_batch(get_user_contest_history, user_slugs)
 
 
 char_pop = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&"

@@ -25,19 +25,29 @@ USERNAME_MAX_LENGTH = 30
 
 db = database.Database()
 
-async def check_user_not_found(interaction: discord.Interaction, user_info):
+async def check_user_not_found_response(interaction: discord.Interaction, user_info, should_edit=False):
     if "error" in user_info:
         embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
-        await interaction.response.send_message(embed=embed)
+        if should_edit:
+            await interaction.edit_original_response(content="", embed=embed)
+        else:
+            await interaction.response.send_message(embed=embed)
         return True
     return False
 
-async def check_user_not_found_2(interaction: discord.Interaction, user_info):
-    if "error" in user_info:
-        embed = discord.Embed(title="Error", description=user_info["message"], color=discord.Color.red())
-        await interaction.edit_original_response(content="",embed=embed)
+async def check_user_not_found(interaction: discord.Interaction, user_slug, should_edit=False):
+    user_info = await utils.get_user_info(user_slug)
+    if await check_user_not_found_response(interaction, user_info, should_edit):
         return True
-    return False
+    return user_info
+
+async def batch_check_user_not_found_contest_history(interaction: discord.Interaction, user_list, should_edit=False):
+    result = await utils.get_batch_user_contest_history(user_list)
+    for user_info in result:
+        if await check_user_not_found_response(interaction, user_info, should_edit):
+            return True
+    return result
+
 # BOT EVENTS
 
 @bot.event
@@ -177,9 +187,8 @@ async def identify(interaction: discord.Interaction, username: str):
         await interaction.response.send_message(f"You have already verified that you are `{verified_users[user_id]}` on LeetCode.")
         return
 
-    user_info = await utils.get_user_info(username)
-
-    if (await check_user_not_found(interaction, user_info)):
+    user_info = await check_user_not_found(interaction, username)
+    if (user_info == True):
         return
 
     # get the official username from the user info
@@ -236,8 +245,8 @@ class FinishIdentification(discord.ui.View):
         username, unique_code, target_button, message = active_identification[user_id]
         if self != target_button:
             return
-        user_info = await utils.get_user_info(username)
-        if (await check_user_not_found(interaction, user_info)):
+        user_info = await check_user_not_found(interaction, username)
+        if (user_info == True):
             return
 
         # check if the user has added the note
@@ -286,8 +295,8 @@ async def profile(interaction: discord.Interaction, username: str = None):
         await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
         return
     
-    user_info = await utils.get_user_info(username)
-    if (await check_user_not_found(interaction, user_info)):
+    user_info = await check_user_not_found(interaction, username)
+    if (user_info == True):
         return
         
     num_solved = {}
@@ -312,7 +321,7 @@ async def profile(interaction: discord.Interaction, username: str = None):
 
 @tree.command(name="plot", description="Plots your Rating over Time")
 async def plot(interaction: discord.Interaction, usernames: str = None):
-    
+    # usernames is required if not verified
     if usernames is None:
         if interaction.user.id in verified_users:
             usernames = verified_users[interaction.user.id]
@@ -320,21 +329,25 @@ async def plot(interaction: discord.Interaction, usernames: str = None):
             await interaction.response.send_message("Please specify a user to get information about.")
             #print(3)
             return
-    userList = usernames.split(" ")
-    userInfoList = []
-    await interaction.response.defer()
-    for user in userList:
-        if (len(user) > USERNAME_MAX_LENGTH):
-            await interaction.followup.send(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+        
+    # check validity of input
+    user_list = usernames.split(" ")
+    for user in user_list:
+        if len(user) > USERNAME_MAX_LENGTH:
+            await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
             return
-        try:
-            date2 = await utils.get_user_contest_history(user)
-        except:
-            #await interaction.edit_original_response(content=(user + " is not a leetcode user."))
-            user_info = await utils.get_user_info(user)
-            if (await check_user_not_found_2(interaction, user_info)):
-                return
-        contestList = date2["userContestRankingHistory"]
+    
+    # Fetch user data
+    await interaction.response.defer()
+    user_info_list = []
+    user_contest_list = await batch_check_user_not_found_contest_history(interaction, user_list, True)
+    if (user_contest_list == True):
+        return
+    
+    # Assume all users exist since if statement would otherwise return
+    for i, user in enumerate(user_list):
+        contest_data = user_contest_list[i]
+        contestList = contest_data["userContestRankingHistory"]
         dates = []
         points = []
         for contest in contestList:
@@ -345,10 +358,10 @@ async def plot(interaction: discord.Interaction, usernames: str = None):
             points.append(int(contest["rating"]))
 
         if (len(dates) > 0):
-            userInfoList.append([dates, points, user])
+            user_info_list.append([dates, points, user])
 
-    if (len(userInfoList) > 0):
-        chart_image = utils.create_line_chart(userInfoList)
+    if (len(user_info_list) > 0):
+        chart_image = utils.create_line_chart(user_info_list)
         file = discord.File(fp=chart_image, filename='chart.png')
         await interaction.followup.send("Here is the rating over time chart:", files=[file])
     else:
