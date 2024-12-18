@@ -22,6 +22,8 @@ bot = discord.Client(intents=discord.Intents.default())
 tree = app_commands.CommandTree(bot)
 
 USERNAME_MAX_LENGTH = 30
+# How many characters to display for a username in a table (i.e. leaderboard)
+USERNAME_DISPLAY_LENGTH = 15
 
 db = database.Database()
 
@@ -76,6 +78,42 @@ async def ping(interaction: discord.Interaction):
     time = round((msg.created_at - interaction.created_at).total_seconds() * 1000)
     await msg.edit(content=text + f' {time} ms round-trip.')
 
+@tree.command(name="leaderboard", description="Get a leaderboard of the server's verified users by rating")
+async def leaderboard(interaction: discord.Interaction):
+    
+    if len(verified_users) == 0:
+        await interaction.response.send_message("No users have verified their LeetCode account.")
+        return
+    
+    user_info = await utils.get_batch(utils.get_user_info, verified_users.values())
+    user_info = sorted(user_info, key=lambda x: x["rating"], reverse=True)
+    for i, user in enumerate(user_info):
+        user["rank"] = i + 1
+        discUsername = await bot.fetch_user(list(verified_users.keys())[list(verified_users.values()).index(user["username"])])
+        if discUsername is None:
+            user["discordUsername"] = "Unknown"
+        discUsername = discUsername.name
+        user["discordUsername"] = discUsername
+
+    # Column widths for formatting
+    colWidths = [len("#"), len("Username"), len("Handle"), len("Rating")]
+    for user in user_info:
+        user["rating"] = round(user["rating"], 2)
+        colWidths[0] = max(colWidths[0], len(str(user["rank"])))
+        colWidths[1] = max(colWidths[1], len(user["discordUsername"]))
+        colWidths[2] = max(colWidths[2], len(user["username"]))
+        colWidths[3] = max(colWidths[3], len(str(user["rating"])))
+    colWidths[1] = min(colWidths[1], USERNAME_DISPLAY_LENGTH)
+    colWidths[2] = min(colWidths[2], USERNAME_DISPLAY_LENGTH)
+
+    embed = discord.Embed(title="Leaderboard", color=discord.Color.green())
+    description = f"```graphql\n{"#":>{colWidths[0]}}  {"Username".center(colWidths[1])}  {"Handle".center(colWidths[2])}  {"Rating".center(colWidths[3])}\n"
+    description += f"{"  ".join(['-' * colWidth for colWidth in colWidths])}\n"
+    
+    description += "\n".join([f"{user['rank']:>{colWidths[0]}}  {user['discordUsername'][:colWidths[1] - 3] + "..." if len(user['discordUsername']) > colWidths[1] else user['discordUsername']:<{colWidths[1]}}  {user['username'][:colWidths[2] - 3] + "..." if len(user['username']) > colWidths[2] else user['username']:<{colWidths[2]}}  {user['rating']:>{colWidths[3]}.2f}" for user in user_info])
+    description += "```"
+    embed.description = description
+    await interaction.response.send_message(embed=embed)
 
 # PROBLEM COMMANDS
 
@@ -147,14 +185,15 @@ async def ranking(interaction: discord.Interaction, contest_type: app_commands.C
     user_info = sorted(user_info, key=cmp_to_key(lambda item1, item2: item1['rank'] - item2['rank']))
 
     # Column widths for formatting
-    colWidths = [len("Rank"), len("Username"), len("="), len("Finish Time"), len("Rating")]
+    colWidths = [len("#"), len("Username"), len("="), len("Finish Time"), len("Rating")]
     for user in user_info:
+        user["rating"] = round(user["rating"], 2)
         colWidths[0] = max(colWidths[0], len(str(user["rank"])))
         colWidths[1] = max(colWidths[1], len(user["username"]))
         colWidths[2] = max(colWidths[2], len(f"{user['solved']}/{num_questions}"))
         colWidths[3] = max(colWidths[3], len(user["time"]))
         colWidths[4] = max(colWidths[4], len(str(user["rating"])))
-    colWidths[1] = min(colWidths[1], 12)
+    colWidths[1] = min(colWidths[1], USERNAME_DISPLAY_LENGTH)
 
     # Make the table
     description = f"```graphql\n{"#":>{colWidths[0]}}  {"Username".center(colWidths[1])}  {"=".center(colWidths[2])}  {"Finish Time".center(colWidths[3])}  {"Rating".center(colWidths[4])}\n"
@@ -170,9 +209,12 @@ tree.add_command(contest)
 # USER COMMANDS
 
 active_identification = {}
+# Discord id to leetcode username
 verified_users = {}
 for user in db.get_all_users():
     verified_users[user[0]] = user[1]
+# Leetcode username back to discord id
+leetcode_to_discord = {v: k for k, v in verified_users.items()}
 
 @tree.command(name="identify", description="Link your LeetCode account to your Discord account")
 async def identify(interaction: discord.Interaction, username: str):
