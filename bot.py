@@ -415,11 +415,19 @@ asyncio.run(utils.load_question_data(check_server=True))
 asyncio.run(utils.load_contest_info_data(check_server=True))
 
 # Check server every 5 minutes
+refresh_interval = 900
 async def check_server():
+    global refresh_interval
     while True:
-        await asyncio.sleep(300)
-        await utils.load_question_data(check_server=True)
-        await utils.load_contest_info_data(check_server=True)
+        await asyncio.sleep(refresh_interval)
+        try:
+            await utils.load_question_data(check_server=True)
+        except Exception as e:
+            print(f"Failed to load question data: {e}")
+        try:
+            await utils.load_contest_info_data(check_server=True)
+        except Exception as e:
+            print(f"Failed to load contest data: {e}")
 
 
 test_bot = os.getenv("TESTING") == "True"
