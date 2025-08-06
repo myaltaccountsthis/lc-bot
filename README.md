@@ -22,5 +22,8 @@ Configure keys in .env file:
 * PG_DATABASE=lc-bot-data
 * PG_HOST=localhost
 * PG_PORT=5432
+* TESTING=True
+* BOT_TOKEN
+* TEST_BOT_TOKEN
 
 Run with `python3 bot.py`
