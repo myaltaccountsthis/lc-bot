@@ -3,4 +3,5 @@
 out/
 __pycache__/
 
-deploy.sh
+# deploy.sh
+deploy.*
