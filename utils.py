@@ -6,6 +6,7 @@ from datetime import datetime
 import io
 import asyncio
 import discord
+import json
 
 import query
 
@@ -28,12 +29,12 @@ async def load_question_data(check_server=False, force_fetch=False):
         if force_fetch or not os.path.exists(PROBLEM_PATH):
             result = await query.do_query("problemsetQuestionList", values={"categorySlug": "", "skip": 0, "limit": -1, "filters": {}})
             question_data = result["problemsetQuestionList"]["questions"]
-            with open(PROBLEM_PATH, "w") as file:
-                file.write(str(question_data))
+            with open(PROBLEM_PATH, "w", encoding="utf-8", errors="replace") as file:
+                json.dump(question_data, file, indent=4)
             print("Loaded all question data from server!")
         else:
             with open(PROBLEM_PATH, "r") as file:
-                question_data = eval(file.read())
+                question_data = json.load(file)
             print("Loaded all question data from file!")
 
         # Store the question info into a dict for easy access
@@ -74,7 +75,7 @@ async def load_question_data(check_server=False, force_fetch=False):
         if len(result) > 0:
             print(f"Found {len(result)} question data on server!")
             with open(PROBLEM_PATH, "w") as file:
-                file.write(str(question_data))
+                json.dump(question_data, file, indent=4)
         else:
             print("No new question data found on server")
 
@@ -205,11 +206,11 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
             result = result["pastContests"]["data"]
             fetched = True
             with open(CONTEST_PATH, "w") as file:
-                file.write(str(result))
+                json.dump(result, file, indent=4)
             print("Loaded all contest data from server!")
         else:
             with open(CONTEST_PATH, "r") as file:
-                result = eval(file.read())
+                result = json.load(file)
             print("Loaded all contest data from file!")
         
         contest_info_data = result
@@ -244,7 +245,7 @@ async def load_contest_info_data(check_server=False, force_fetch=False):
         if loaded > 0:
             print(f"Found {loaded} updated contest data on server")
             with open(CONTEST_PATH, "w") as file:
-                file.write(str(contest_info_data))
+                json.dump(contest_info_data, file)
         else:
             print("No new contest data found on server")
 
