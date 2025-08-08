@@ -361,8 +361,14 @@ async def profile(interaction: discord.Interaction, username: str = None):
     embed.description = "\n".join(lines)
     await interaction.response.send_message(embed=embed)
 
-@tree.command(name="plot", description="Plots your Rating over Time")
-async def plot(interaction: discord.Interaction, usernames: str = None):
+# PLOT COMMANDS
+
+# Group for plotting
+plot = app_commands.Group(name="plot", description="Commands related to plotting data")
+
+# Plots all data points as they appear
+@plot.command(name="rating", description="Plots your Rating over Time")
+async def plotRating(interaction: discord.Interaction, usernames: str = None):
     # usernames is required if not verified
     if usernames is None:
         if interaction.user.id in verified_users:
@@ -409,6 +415,61 @@ async def plot(interaction: discord.Interaction, usernames: str = None):
     else:
         await interaction.followup.send("What a loser, " + str(usernames) + " hasn't even done a single LeetCode contest.")
 
+# Estimates performance based on rating change
+@plot.command(name="performance", description="Plots your Performance over Time")
+async def plotPerformance(interaction: discord.Interaction, usernames: str = None):
+    # usernames is required if not verified
+    if usernames is None:
+        if interaction.user.id in verified_users:
+            usernames = verified_users[interaction.user.id]
+        else:
+            await interaction.response.send_message("Please specify a user to get information about.")
+            #print(3)
+            return
+        
+    # check validity of input
+    user_list = usernames.split(" ")
+    for user in user_list:
+        if len(user) > USERNAME_MAX_LENGTH:
+            await interaction.response.send_message(f"Username too long, must be less than {USERNAME_MAX_LENGTH} characters.")
+            return
+    
+    # Fetch user data
+    await interaction.response.defer()
+    user_info_list = []
+    user_contest_list = await batch_check_user_not_found_contest_history(interaction, user_list, True)
+    if (user_contest_list == True):
+        return
+    
+    # Assume all users exist since if statement would otherwise return
+    for i, user in enumerate(user_list):
+        contest_data = user_contest_list[i]
+        contestList = contest_data["userContestRankingHistory"]
+        dates = []
+        points = [1500]
+        for contest in contestList:
+            if (not contest["attended"]):
+                continue
+            #print("attended another contest")
+            dates.append(utils.convert_timestamp_to_date(contest["contest"]["startTime"]))
+            points.append(int(contest["rating"]))
+        
+        # Estimate the performance using rating change
+        for j in range(len(points) - 1):
+            points[j] += (points[j + 1] - points[j]) / (.2 if points[j] < 1850 else .15)
+        points.pop()
+
+        if (len(dates) > 0):
+            user_info_list.append([dates, points, user])
+
+    if (len(user_info_list) > 0):
+        chart_image = utils.create_line_chart(user_info_list)
+        file = discord.File(fp=chart_image, filename='chart.png')
+        await interaction.followup.send("Here is the performance over time chart:", files=[file])
+    else:
+        await interaction.followup.send("What a loser, " + str(usernames) + " hasn't even done a single LeetCode contest.")
+
+tree.add_command(plot)
 
 # load data from server
 asyncio.run(utils.load_question_data(check_server=True))
