@@ -49,6 +49,9 @@ PG_PASSWORD=postgres_or_account_password_here
 PG_DATABASE=lc-bot-data
 PG_HOST=localhost
 PG_PORT=5432
+TESTING=True
+TEST_BOT_TOKEN
+BOT_TOKEN
 ```
 
 ---
